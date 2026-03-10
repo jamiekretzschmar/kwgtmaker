@@ -1,0 +1,90 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: widgets
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required) - The ID of the user who generated the widget
+    //   - prompt: string (required, max 1000 chars) - The user's prompt
+    //   - aspectRatio: string (required, max 10 chars) - The aspect ratio
+    //   - mockupUrl: string (required, max 5000000 chars) - The base64 image URL
+    //   - instructions: string (required, max 50000 chars) - The instructions
+    //   - kodes: string (optional, max 10000 chars) - The formulas
+    //   - createdAt: timestamp (required) - Creation time
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function uidUnchanged() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('userId' in request.resource.data) || request.resource.data.userId == resource.data.userId;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function validStringLength(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+        request.resource.data[field].size() >= minLen &&
+        request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidWidget(data) {
+      return hasRequiredFields(['userId', 'prompt', 'aspectRatio', 'mockupUrl', 'instructions', 'createdAt']) &&
+             hasOnlyAllowedFields(['userId', 'prompt', 'aspectRatio', 'mockupUrl', 'instructions', 'kodes', 'createdAt']) &&
+             validStringLength('userId', 1, 100) &&
+             validStringLength('prompt', 1, 1000) &&
+             validStringLength('aspectRatio', 3, 10) &&
+             validStringLength('mockupUrl', 10, 5000000) &&
+             validStringLength('instructions', 10, 50000) &&
+             isValidOptionalString('kodes', 0, 10000) &&
+             data.createdAt is timestamp;
+    }
+
+    match /widgets/{widgetId} {
+      allow get: if true;
+      allow list: if isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && 
+                    isValidWidget(request.resource.data) && 
+                    request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(resource.data.userId) && 
+                    isValidWidget(request.resource.data) && 
+                    uidNotModified() &&
+                    request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if isOwner(resource.data.userId);
+    }
+  }
+}

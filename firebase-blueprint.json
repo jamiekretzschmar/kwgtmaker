@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Widget": {
+      "title": "Widget",
+      "description": "A generated KWGT widget prompt and instructions",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who generated the widget"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "The user's prompt describing the widget"
+        },
+        "aspectRatio": {
+          "type": "string",
+          "description": "The aspect ratio used for the mockup image"
+        },
+        "mockupUrl": {
+          "type": "string",
+          "description": "The URL of the generated mockup image (base64 data URI or storage URL)"
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Detailed step-by-step instructions to build the widget"
+        },
+        "kodes": {
+          "type": "string",
+          "description": "Relevant KWGT formulas (Kodes) needed for the widget"
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "The time the widget was generated"
+        }
+      },
+      "required": ["userId", "prompt", "aspectRatio", "mockupUrl", "instructions", "createdAt"]
+    }
+  },
+  "firestore": {
+    "widgets/{widgetId}": {
+      "schema": {
+        "$ref": "#/entities/Widget"
+      },
+      "description": "Stores generated widgets for users"
+    }
+  }
+}
