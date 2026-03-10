@@ -7,6 +7,12 @@ export function ApiKeySelector({ onKeySelected }: { onKeySelected: () => void })
   useEffect(() => {
     const checkKey = async () => {
       try {
+        if (!(window as any).aistudio) {
+          // If we are not in the AI Studio environment, assume the key is provided via .env
+          setHasKey(true);
+          onKeySelected();
+          return;
+        }
         const hasSelected = await (window as any).aistudio.hasSelectedApiKey();
         setHasKey(hasSelected);
         if (hasSelected) {
@@ -23,6 +29,11 @@ export function ApiKeySelector({ onKeySelected }: { onKeySelected: () => void })
 
   const handleSelectKey = async () => {
     try {
+      if (!(window as any).aistudio) {
+        setHasKey(true);
+        onKeySelected();
+        return;
+      }
       await (window as any).aistudio.openSelectKey();
       // Assume success after triggering to mitigate race condition
       setHasKey(true);
