@@ -7,6 +7,13 @@ export function ApiKeySelector({ onKeySelected }: { onKeySelected: () => void })
   useEffect(() => {
     const checkKey = async () => {
       try {
+        // If the key is provided via environment variables, use it
+        if (process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY) {
+          setHasKey(true);
+          onKeySelected();
+          return;
+        }
+
         if (!(window as any).aistudio) {
           // If we are not in the AI Studio environment, assume the key is provided via .env
           setHasKey(true);
@@ -29,6 +36,12 @@ export function ApiKeySelector({ onKeySelected }: { onKeySelected: () => void })
 
   const handleSelectKey = async () => {
     try {
+      if (process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY) {
+        setHasKey(true);
+        onKeySelected();
+        return;
+      }
+
       if (!(window as any).aistudio) {
         setHasKey(true);
         onKeySelected();

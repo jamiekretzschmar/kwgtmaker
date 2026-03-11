@@ -66,10 +66,12 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     
     // Check if user has selected an API key
     if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-      const hasKey = await window.aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        await window.aistudio.openSelectKey();
-        // Assume success after dialog closes to handle race condition
+      if (!process.env.GEMINI_API_KEY && !import.meta.env.VITE_GEMINI_API_KEY) {
+        const hasKey = await window.aistudio.hasSelectedApiKey();
+        if (!hasKey) {
+          await window.aistudio.openSelectKey();
+          // Assume success after dialog closes to handle race condition
+        }
       }
     }
 
