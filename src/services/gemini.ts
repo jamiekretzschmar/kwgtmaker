@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 
 export async function generateWidgetMockup(prompt: string, aspectRatio: string): Promise<string> {
   // Create instance right before call to get the latest key
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
@@ -32,7 +32,7 @@ export async function generateWidgetMockup(prompt: string, aspectRatio: string):
 }
 
 export async function generateWidgetInstructions(prompt: string): Promise<string> {
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   const systemInstruction = `You are an expert KWGT (Kustom Widget Maker) designer and developer.
@@ -79,7 +79,7 @@ Format the output in clean, readable Markdown. Use headings, bullet points, and 
 }
 
 export async function generateWidgetAnimation(prompt: string, imageBase64: string, aspectRatio: string): Promise<string> {
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   // Map aspect ratio to 16:9 or 9:16 (Veo only supports these)
@@ -138,7 +138,7 @@ export async function generateWidgetAnimation(prompt: string, imageBase64: strin
 }
 
 export async function suggestWidgetImprovements(originalPrompt: string, userRequest?: string): Promise<string> {
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = userRequest 
@@ -157,7 +157,7 @@ export async function suggestWidgetImprovements(originalPrompt: string, userRequ
   }
 }
 export async function searchWidgetKodes(prompt: string): Promise<string> {
-  const apiKey = (process.env as any).API_KEY || process.env.GEMINI_API_KEY;
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   try {

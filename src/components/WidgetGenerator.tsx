@@ -323,7 +323,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             {fonts.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{fonts.length} file(s) selected</p>}
             {fonts.map((f, i) => (
               <div key={i} className="mt-2 space-y-2">
-                <input type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setFonts)} className="w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
+                <input type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setFonts)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
                 {f.fontFamily && (
                   <div className="p-3 bg-neutral-800 rounded-md border border-neutral-700">
                     <p className="text-xs text-neutral-500 mb-1">Preview:</p>
@@ -339,7 +339,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             {fileErrors.icons && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.icons}</p>}
             {icons.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{icons.length} file(s) selected</p>}
             {icons.map((f, i) => (
-              <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setIcons)} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
+              <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setIcons)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
             ))}
           </div>
           <div>
@@ -348,7 +348,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             {fileErrors.bitmaps && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.bitmaps}</p>}
             {bitmaps.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{bitmaps.length} file(s) selected</p>}
             {bitmaps.map((f, i) => (
-              <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setBitmaps)} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
+              <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setBitmaps)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
             ))}
           </div>
         </div>
