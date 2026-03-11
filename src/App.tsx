@@ -63,7 +63,6 @@ function HistoryPage({ user, refreshTrigger }: { user: User | null, refreshTrigg
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
@@ -80,10 +79,6 @@ export default function App() {
         <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
-  }
-
-  if (!hasApiKey) {
-    return <ApiKeySelector onKeySelected={() => setHasApiKey(true)} />;
   }
 
   return (

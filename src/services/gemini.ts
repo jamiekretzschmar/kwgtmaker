@@ -5,8 +5,14 @@ export async function generateWidgetMockup(prompt: string, aspectRatio: string):
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
+  // Map aspect ratios to those supported by gemini-2.5-flash-image
+  let mappedRatio = aspectRatio;
+  if (aspectRatio === '2:3') mappedRatio = '3:4';
+  if (aspectRatio === '3:2') mappedRatio = '4:3';
+  if (aspectRatio === '21:9') mappedRatio = '16:9';
+
   const response = await ai.models.generateContent({
-    model: 'gemini-3-pro-image-preview',
+    model: 'gemini-2.5-flash-image',
     contents: {
       parts: [
         {
@@ -16,8 +22,7 @@ export async function generateWidgetMockup(prompt: string, aspectRatio: string):
     },
     config: {
       imageConfig: {
-        aspectRatio: aspectRatio as any,
-        imageSize: "1K"
+        aspectRatio: mappedRatio as any,
       }
     },
   });
