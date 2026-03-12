@@ -5,6 +5,7 @@ import { auth } from '../firebase';
 import { Loader2, Wand2, Search, Download, CheckCircle2, AlertCircle, ChevronDown, PlayCircle, FileText, Sparkles } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { exportToKwgt } from '../utils/kwgtExport';
+import { compressImage } from '../utils/image';
 
 const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'];
 
@@ -126,14 +127,16 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
         })
       ]);
 
-      setResult({ mockupUrl, instructions, kodes });
+      const compressedMockupUrl = await compressImage(mockupUrl, 800, 0.7);
+
+      setResult({ mockupUrl: compressedMockupUrl, instructions, kodes });
 
       // Save to Firestore
       if (currentWidgetId) {
         await updateWidget(currentWidgetId, {
           prompt,
           aspectRatio,
-          mockupUrl,
+          mockupUrl: compressedMockupUrl,
           instructions,
           kodes,
         });
@@ -142,7 +145,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
           userId: auth.currentUser.uid,
           prompt,
           aspectRatio,
-          mockupUrl,
+          mockupUrl: compressedMockupUrl,
           instructions,
           kodes,
         });
