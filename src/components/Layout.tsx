@@ -32,7 +32,7 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
           <div className="flex items-center gap-3">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-2 -ml-2 text-neutral-400 hover:text-white transition-colors"
+              className="p-2 -ml-2 text-neutral-400 hover:text-white transition-colors hidden sm:block"
             >
               {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
@@ -49,7 +49,7 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
 
       {/* Sidebar Navigation */}
       {isMenuOpen && (
-        <div className="fixed inset-0 z-40 flex">
+        <div className="fixed inset-0 z-40 flex hidden sm:flex">
           <div 
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
             onClick={() => setIsMenuOpen(false)}
@@ -85,7 +85,27 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Bottom Navigation for Mobile */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-neutral-900 border-t border-neutral-800 flex justify-around p-3 sm:hidden z-50 pb-safe">
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = location.pathname === link.path;
+          return (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`flex flex-col items-center gap-1 ${
+                isActive ? 'text-indigo-400' : 'text-neutral-500 hover:text-neutral-300'
+              }`}
+            >
+              <Icon className="w-6 h-6" />
+              <span className="text-[10px] font-medium">{link.name}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-24 sm:pb-12">
         {children}
       </main>
     </div>

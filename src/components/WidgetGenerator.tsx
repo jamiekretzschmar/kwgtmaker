@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { generateWidgetMockup, generateWidgetInstructions, searchWidgetKodes, generateWidgetAnimation, suggestWidgetImprovements } from '../services/gemini';
+import { generateWidgetMockup, generateWidgetInstructions, searchWidgetKodes, generateWidgetAnimation, suggestWidgetImprovements, enhanceWidgetPrompt } from '../services/gemini';
 import { saveWidget, updateWidget } from '../services/firestore';
 import { auth } from '../firebase';
-import { Loader2, Wand2, Search, Download, CheckCircle2, AlertCircle, ChevronDown, PlayCircle, FileText, Sparkles } from 'lucide-react';
+import { Loader2, Wand2, Search, Download, CheckCircle2, AlertCircle, ChevronDown, PlayCircle, FileText, Sparkles, Palette, Code, Image as ImageIcon } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { exportToKwgt } from '../utils/kwgtExport';
 import { compressImage } from '../utils/image';
@@ -52,6 +52,43 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
   const [wizardInput, setWizardInput] = useState('');
   const [wizardLoading, setWizardLoading] = useState(false);
   const [wizardResult, setWizardResult] = useState<string | null>(null);
+
+  const [primaryColor, setPrimaryColor] = useState('#1E1E1E');
+  const [secondaryColor, setSecondaryColor] = useState('#FFFFFF');
+  const [accentColor, setAccentColor] = useState('#6366F1');
+  const [isEnhancing, setIsEnhancing] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Drafting layout...');
+  const [activeTab, setActiveTab] = useState<'preview' | 'instructions' | 'code'>('preview');
+
+  useEffect(() => {
+    if (!loading) return;
+    const messages = [
+      'Drafting layout...',
+      'Applying colors...',
+      'Writing Kodes...',
+      'Generating mockup...',
+      'Finalizing instructions...'
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      setLoadingMessage(messages[i]);
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [loading]);
+
+  const handleEnhancePrompt = async () => {
+    if (!prompt.trim()) return;
+    setIsEnhancing(true);
+    try {
+      const enhanced = await enhanceWidgetPrompt(prompt);
+      setPrompt(enhanced);
+    } catch (err) {
+      console.error("Failed to enhance prompt:", err);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
 
   // Cleanup object URLs to avoid memory leaks
   useEffect(() => {
@@ -112,17 +149,20 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     setLoading(true);
     setError(null);
     setResult(null);
+    setActiveTab('preview');
+
+    const fullPrompt = `${prompt}\n\nColor Palette:\nPrimary: ${primaryColor}\nSecondary: ${secondaryColor}\nAccent: ${accentColor}`;
 
     try {
       // Run generation tasks in parallel
       const [mockupUrl, instructions, kodes] = await Promise.all([
-        generateWidgetMockup(prompt, aspectRatio).catch(err => {
+        generateWidgetMockup(fullPrompt, aspectRatio).catch(err => {
           throw new Error(`Failed to generate mockup: ${err.message || 'Unknown error'}`);
         }),
-        generateWidgetInstructions(prompt).catch(err => {
+        generateWidgetInstructions(fullPrompt).catch(err => {
           throw new Error(`Failed to generate instructions: ${err.message || 'Unknown error'}`);
         }),
-        searchWidgetKodes(prompt).catch(err => {
+        searchWidgetKodes(fullPrompt).catch(err => {
           throw new Error(`Failed to search for Kodes: ${err.message || 'Unknown error'}`);
         })
       ]);
@@ -257,35 +297,46 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
 
       <form onSubmit={handleGenerate} className="space-y-6">
         <div>
-          <div className="flex justify-between items-end mb-2">
+          <div className="flex flex-wrap justify-between items-end gap-2 mb-2">
             <label className="block text-sm font-medium text-neutral-300">
               Describe your widget
             </label>
-            <div className="relative">
+            <div className="flex items-center gap-4">
               <button
                 type="button"
-                onClick={() => setShowPrompts(!showPrompts)}
-                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                onClick={handleEnhancePrompt}
+                disabled={isEnhancing || !prompt.trim()}
+                className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Popular Prompts <ChevronDown className="w-3 h-3" />
+                {isEnhancing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                Enhance Prompt
               </button>
-              {showPrompts && (
-                <div className="absolute right-0 top-full mt-1 w-72 bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl z-10 overflow-hidden">
-                  {POPULAR_PROMPTS.map((p, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      onClick={() => {
-                        setPrompt(p);
-                        setShowPrompts(false);
-                      }}
-                      className="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-white border-b border-neutral-700/50 last:border-0 transition-colors"
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPrompts(!showPrompts)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                >
+                  Popular Prompts <ChevronDown className="w-3 h-3" />
+                </button>
+                {showPrompts && (
+                  <div className="absolute right-0 top-full mt-1 w-72 bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl z-10 overflow-hidden">
+                    {POPULAR_PROMPTS.map((p, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setPrompt(p);
+                          setShowPrompts(false);
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-white border-b border-neutral-700/50 last:border-0 transition-colors"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <textarea
@@ -298,6 +349,44 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">
+              Color Palette
+            </label>
+            <div className="flex items-center gap-4 bg-neutral-800 p-3 rounded-xl border border-neutral-700">
+              <div className="flex flex-col items-center gap-1">
+                <input
+                  type="color"
+                  value={primaryColor}
+                  onChange={(e) => setPrimaryColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  title="Primary Color"
+                />
+                <span className="text-[10px] text-neutral-400">Primary</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <input
+                  type="color"
+                  value={secondaryColor}
+                  onChange={(e) => setSecondaryColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  title="Secondary Color"
+                />
+                <span className="text-[10px] text-neutral-400">Secondary</span>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <input
+                  type="color"
+                  value={accentColor}
+                  onChange={(e) => setAccentColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent"
+                  title="Accent Color"
+                />
+                <span className="text-[10px] text-neutral-400">Accent</span>
+              </div>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-neutral-300 mb-2">
               Aspect Ratio
@@ -363,7 +452,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             {loading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Generating...
+                {loadingMessage}
               </>
             ) : (
               <>
@@ -390,98 +479,117 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
       )}
 
       {result && (
-        <div className="mt-12 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex justify-between items-center">
+        <div className="mt-12 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
              <h3 className="text-xl font-bold text-white">Generated Result</h3>
-             <div className="flex gap-3">
+             <div className="flex flex-wrap gap-3">
                <button
                   onClick={handleExportText}
-                  className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <FileText className="w-4 h-4" />
                   Export Docs
                 </button>
                <button
                   onClick={() => exportToKwgt({ id: currentWidgetId || undefined, prompt, aspectRatio, ...result, userId: auth.currentUser?.uid || '', createdAt: new Date() }, { fonts, icons, bitmaps })}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 text-sm"
                 >
                   <Download className="w-4 h-4" />
                   Export .kwgt
                 </button>
              </div>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Mockup */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                Mockup Preview
-              </h3>
-              <div className="bg-neutral-800 rounded-2xl overflow-hidden border border-neutral-700 flex flex-col items-center justify-center p-4">
-                {videoUrl ? (
-                  <video 
-                    src={videoUrl} 
-                    controls 
-                    autoPlay 
-                    loop 
-                    className="max-w-full max-h-[600px] object-contain rounded-xl shadow-2xl"
-                  />
-                ) : (
-                  <img
-                    src={result.mockupUrl}
-                    alt="Widget Mockup"
-                    className="max-w-full max-h-[600px] object-contain rounded-xl shadow-2xl"
-                    referrerPolicy="no-referrer"
-                  />
-                )}
-                
-                {!videoUrl && (
-                  <div className="mt-4 w-full">
-                    {isGeneratingVideo ? (
-                      <div className="flex flex-col items-center p-4 bg-neutral-900/50 rounded-xl border border-neutral-700/50">
-                        <Loader2 className="w-6 h-6 text-indigo-400 animate-spin mb-2" />
-                        <p className="text-sm text-neutral-300 text-center">{videoLoadingMessage}</p>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleGenerateAnimation}
-                        className="w-full py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
-                      >
-                        <PlayCircle className="w-4 h-4" />
-                        Generate Animation Preview
-                      </button>
-                    )}
-                    {videoError && (
-                      <p className="text-red-400 text-xs mt-2 text-center">{videoError}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            {/* Instructions */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-                Build Instructions
-              </h3>
-              <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700 max-h-[600px] overflow-y-auto custom-scrollbar">
+          <div className="flex border-b border-neutral-800 overflow-x-auto custom-scrollbar">
+            <button
+              onClick={() => setActiveTab('preview')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'preview' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white hover:border-neutral-700'
+              }`}
+            >
+              <ImageIcon className="w-4 h-4" /> Preview
+            </button>
+            <button
+              onClick={() => setActiveTab('instructions')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'instructions' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white hover:border-neutral-700'
+              }`}
+            >
+              <FileText className="w-4 h-4" /> Instructions
+            </button>
+            <button
+              onClick={() => setActiveTab('code')}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
+                activeTab === 'code' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white hover:border-neutral-700'
+              }`}
+            >
+              <Code className="w-4 h-4" /> Raw Code
+            </button>
+          </div>
+
+          <div className="pt-4">
+            {activeTab === 'preview' && (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="bg-neutral-800 rounded-2xl overflow-hidden border border-neutral-700 flex flex-col items-center justify-center p-4">
+                  {videoUrl ? (
+                    <video 
+                      src={videoUrl} 
+                      controls 
+                      autoPlay 
+                      loop 
+                      className="max-w-full max-h-[600px] object-contain rounded-xl shadow-2xl"
+                    />
+                  ) : (
+                    <img
+                      src={result.mockupUrl}
+                      alt="Widget Mockup"
+                      className="max-w-full max-h-[600px] object-contain rounded-xl shadow-2xl"
+                      referrerPolicy="no-referrer"
+                    />
+                  )}
+                  
+                  {!videoUrl && (
+                    <div className="mt-4 w-full max-w-md">
+                      {isGeneratingVideo ? (
+                        <div className="flex flex-col items-center p-4 bg-neutral-900/50 rounded-xl border border-neutral-700/50">
+                          <Loader2 className="w-6 h-6 text-indigo-400 animate-spin mb-2" />
+                          <p className="text-sm text-neutral-300 text-center">{videoLoadingMessage}</p>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={handleGenerateAnimation}
+                          className="w-full py-2.5 bg-neutral-700 hover:bg-neutral-600 text-white text-sm font-medium rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                          <PlayCircle className="w-4 h-4" />
+                          Generate Animation Preview
+                        </button>
+                      )}
+                      {videoError && (
+                        <p className="text-red-400 text-xs mt-2 text-center">{videoError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'instructions' && (
+              <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700 animate-in fade-in duration-300">
                 <div className="prose prose-invert prose-indigo max-w-none">
                   <Markdown>{result.instructions}</Markdown>
                 </div>
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* Kodes */}
-          <div className="space-y-4">
-            <h3 className="text-xl font-semibold text-white flex items-center gap-2">
-              <Search className="w-5 h-5 text-indigo-400" />
-              Relevant Kodes & Formulas
-            </h3>
-            <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700">
-              <div className="prose prose-invert prose-indigo max-w-none">
-                <Markdown>{result.kodes}</Markdown>
+            {activeTab === 'code' && (
+              <div className="space-y-4 animate-in fade-in duration-300">
+                <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700 overflow-x-auto">
+                  <pre className="text-sm text-indigo-300 font-mono whitespace-pre-wrap">
+                    <code>{result.kodes}</code>
+                  </pre>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Widget Wizard */}
@@ -493,7 +601,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             <p className="text-sm text-neutral-400">
               Want to tweak this widget? Describe what you'd like to change, or leave it blank for general improvement suggestions.
             </p>
-            <form onSubmit={handleWizardSubmit} className="flex gap-3">
+            <form onSubmit={handleWizardSubmit} className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={wizardInput}
@@ -504,7 +612,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
               <button
                 type="submit"
                 disabled={wizardLoading}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-neutral-700 disabled:text-neutral-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                className="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-neutral-700 disabled:text-neutral-400 text-white font-medium rounded-xl transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
               >
                 {wizardLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                 Get Suggestions

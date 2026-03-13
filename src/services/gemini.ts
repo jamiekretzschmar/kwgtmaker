@@ -1,5 +1,23 @@
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 
+export async function enhanceWidgetPrompt(prompt: string): Promise<string> {
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+  const ai = new GoogleGenAI({ apiKey });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `You are an expert KWGT designer. Enhance the following user description of a KWGT widget to make it more detailed, specific, and optimized for an AI image generator and code generator. 
+    Focus on layout, style (e.g., Neumorphism, Glassmorphism, Material), typography, and data elements.
+    Keep it concise but highly descriptive. Do not include any conversational text, just the enhanced prompt.
+    
+    Original prompt: "${prompt}"
+    
+    Enhanced prompt:`,
+  });
+
+  return response.text?.trim() || prompt;
+}
+
 export async function generateWidgetMockup(prompt: string, aspectRatio: string): Promise<string> {
   // Create instance right before call to get the latest key
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;

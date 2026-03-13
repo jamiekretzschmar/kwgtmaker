@@ -19,7 +19,7 @@ export function SettingsPage() {
         <div className="space-y-4 text-neutral-300">
           <p>To run this project on your local machine, you'll need Node.js and npm installed.</p>
           
-          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800">
+          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800 overflow-x-auto custom-scrollbar">
             <p className="text-neutral-500"># 1. Clone or download the repository</p>
             <p className="text-emerald-400">git clone &lt;repository-url&gt;</p>
             <p className="text-emerald-400">cd kustomgen</p>
@@ -44,8 +44,8 @@ export function SettingsPage() {
         <div className="space-y-4 text-neutral-300">
           <p>Create a <code>.env</code> file in the root of your project with the following variables:</p>
           
-          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800">
-            <p className="text-indigo-300">VITE_GEMINI_API_KEY=<span className="text-neutral-500">your_gemini_api_key_here</span></p>
+          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800 overflow-x-auto custom-scrollbar">
+            <p className="text-indigo-300 whitespace-nowrap">VITE_GEMINI_API_KEY=<span className="text-neutral-500">your_gemini_api_key_here</span></p>
           </div>
           <p className="text-sm text-neutral-400 mt-2">
             Note: Firebase configuration is handled via the <code>firebase-applet-config.json</code> file.
@@ -62,7 +62,7 @@ export function SettingsPage() {
           <p>If you are using Google AI Studio, you can export this project directly to GitHub using the export menu in the top right corner.</p>
           <p>To manually upload this project to GitHub from your local machine, run the following commands in your terminal:</p>
           
-          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800">
+          <div className="bg-neutral-950 rounded-xl p-4 font-mono text-sm border border-neutral-800 overflow-x-auto custom-scrollbar">
             <p className="text-neutral-500"># Initialize a new git repository</p>
             <p className="text-emerald-400">git init</p>
             <br />
