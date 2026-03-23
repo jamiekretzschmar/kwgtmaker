@@ -5,6 +5,7 @@ import { Trash2, Clock, Calendar, Share2, Check, X, AlertCircle, CheckCircle2, C
 import { format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { exportToKwgt } from '../utils/kwgtExport';
+import { ExportFile } from '../types';
 
 const aspectRatioMap: Record<string, string> = {
   '1:1': 'aspect-square',
@@ -16,11 +17,6 @@ const aspectRatioMap: Record<string, string> = {
   '3:2': 'aspect-[3/2]',
   '21:9': 'aspect-[21/9]',
 };
-
-interface ExportFile {
-  file: File;
-  name: string;
-}
 
 export function WidgetHistory({ refreshTrigger }: { refreshTrigger: number }) {
   const [widgets, setWidgets] = useState<WidgetData[]>([]);
@@ -200,7 +196,7 @@ export function WidgetHistory({ refreshTrigger }: { refreshTrigger: number }) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    const content = `# Widget: ${widget.prompt}\n\n## Instructions\n${widget.instructions}\n\n## Kodes\n${widget.kodes}`;
+                    const content = `# Widget: ${widget.prompt}\n\n## Instructions\n${widget.instructions}\n\n## Preset JSON\n${JSON.stringify(widget.presetJson, null, 2)}`;
                     const blob = new Blob([content], { type: 'text/markdown' });
                     const url = URL.createObjectURL(blob);
                     const a = document.createElement('a');

@@ -6,6 +6,24 @@
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
+@layer base {
+  :root {
+    --bg: #ffffff;
+    --text: #1a1a1a;
+  }
+  .dark {
+    --bg: #0a0a0a;
+    --text: #ffffff;
+  }
+  .lettuce {
+    --bg: #e8f5e9;
+    --text: #2e7d32;
+  }
+  body {
+    @apply bg-[var(--bg)] text-[var(--text)];
+  }
+}
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 8px;

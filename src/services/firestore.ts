@@ -69,7 +69,7 @@ export interface WidgetData {
   aspectRatio: string;
   mockupUrl: string;
   instructions: string;
-  kodes?: string;
+  presetJson?: any;
   createdAt: any;
 }
 
@@ -132,5 +132,39 @@ export async function deleteWidget(widgetId: string) {
     await deleteDoc(doc(db, 'widgets', widgetId));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function saveFavoriteColors(userId: string, colors: string[]) {
+  const path = `userSettings/${userId}`;
+  try {
+    // Try to update if it exists
+    await updateDoc(doc(db, 'userSettings', userId), {
+      favoriteColors: colors,
+    });
+  } catch (error) {
+    // If doc doesn't exist, create it
+    try {
+      await addDoc(collection(db, 'userSettings'), {
+        userId,
+        favoriteColors: colors,
+      });
+    } catch (addError) {
+      handleFirestoreError(addError, OperationType.CREATE, path);
+    }
+  }
+}
+
+export async function loadFavoriteColors(userId: string): Promise<string[]> {
+  const path = `userSettings/${userId}`;
+  try {
+    const snapshot = await getDocFromServer(doc(db, 'userSettings', userId));
+    if (snapshot.exists()) {
+      return snapshot.data()?.favoriteColors || [];
+    }
+    return [];
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return [];
   }
 }

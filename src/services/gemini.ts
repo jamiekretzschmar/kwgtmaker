@@ -179,51 +179,94 @@ export async function suggestWidgetImprovements(originalPrompt: string, userRequ
     throw new Error("Failed to generate suggestions.");
   }
 }
-export async function searchWidgetKodes(prompt: string): Promise<string> {
+export async function generateFullWidgetPreset(prompt: string, vibe: string, assets: {fonts: string[], icons: string[], bitmaps: string[]}): Promise<{json: any, instructions: string}> {
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Generate the raw JSON array of KWGT modules for a widget based on this request: "${prompt}".
+    // 1. Generate the JSON Preset
+    const jsonResponse = await ai.models.generateContent({
+      model: 'gemini-3.1-pro-preview',
+      contents: `Generate a complete KWGT preset JSON for a widget based on this prompt: "${prompt}".
       
       CRITICAL INSTRUCTIONS:
-      - ONLY output a valid JSON array containing KWGT module objects.
-      - DO NOT include markdown formatting like \`\`\`json or \`\`\`.
-      - DO NOT include any explanatory text before or after the JSON.
-      - The output must be parseable by JSON.parse().
-      - Use standard KWGT internal types like "TextModule", "ShapeModule", "OverlapLayerModule", "StackLayerModule", "ImageModule".
-      - Include appropriate properties like "text_expression", "paint_color", "shape_width", "shape_height", "shape_type", "position_padding_top", etc.
-      
-      Example output format:
-      [
-        {
-          "internal_type": "ShapeModule",
-          "shape_width": 200.0,
-          "shape_height": 200.0,
-          "shape_type": "RECT",
-          "paint_color": "#FF000000",
-          "shape_corners": 20.0
-        },
-        {
-          "internal_type": "TextModule",
-          "text_expression": "$df(hh:mm)$",
-          "text_size": 60.0,
-          "paint_color": "#FFFFFFFF"
+      - Vibe: ${vibe}
+      - Assets to include/map: 
+        - Fonts: ${assets.fonts.join(', ')}
+        - Icons: ${assets.icons.join(', ')}
+        - Bitmaps: ${assets.bitmaps.join(', ')}
+      - The JSON MUST follow this exact structure:
+      {
+        "preset_info": { "version": 11, "title": "...", "description": "...", "author": "...", "email": "...", "width": 1080, "height": 1051, "features": "...", "release": 123456789, "locked": false, "pflags": 0 },
+        "preset_root": {
+          "internal_events": [{ "action": "KUSTOM_ACTION" }],
+          "internal_type": "RootLayerModule",
+          "globals_list": { ... },
+          "internal_toggles": { ... },
+          "internal_formulas": { ... },
+          "viewgroup_items": [ ... ]
         }
-      ]
-      
-      Generate the JSON array for: ${prompt}`,
+      }
+      - Map the provided asset filenames into the JSON structure where appropriate (e.g., font family names, image paths).
+      - ONLY output valid JSON.
+      - DO NOT include markdown formatting like \`\`\`json or \`\`\`.
+      - DO NOT include any explanatory text.
+      - Use standard KWGT internal types.
+      - Ensure all formulas and globals are correctly structured.
+      `,
     });
+
+    let jsonStr = jsonResponse.text || "";
+    jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
     
-    // Clean up the response in case the model still adds markdown
-    let kodes = response.text || "";
-    kodes = kodes.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
-    
-    return kodes;
-  } catch (error) {
-    console.error("Error generating Kodes:", error);
-    throw new Error("Failed to communicate with Gemini API.");
+    let jsonPreset;
+    try {
+      jsonPreset = JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("Failed to parse JSON preset:", jsonStr);
+      throw new Error("Failed to generate valid JSON preset.");
+    }
+
+    // 2. Generate the Instructions
+    const instructionsResponse = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Based on the following KWGT widget preset JSON, provide comprehensive, non-jargon, step-by-step instructions on how to build this widget in the KWGT app.
+      
+      JSON: ${JSON.stringify(jsonPreset)}
+      
+      Instructions:`,
+    });
+
+    return {
+      json: jsonPreset,
+      instructions: instructionsResponse.text || "No instructions generated."
+    };
+  } catch (error: any) {
+    console.error("Error in generateFullWidgetPreset:", error);
+    throw new Error(error.message || "Failed to generate widget preset.");
   }
+}
+
+export async function auditWidgetContrast(presetJson: any): Promise<{compliant: boolean, suggestions: string}> {
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+  const ai = new GoogleGenAI({ apiKey });
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Analyze the following KWGT preset JSON for accessibility, specifically focusing on color contrast between text and background elements.
+    
+    JSON: ${JSON.stringify(presetJson)}
+    
+    Return a JSON response with:
+    {
+      "compliant": boolean,
+      "suggestions": "string"
+    }
+    `,
+    config: {
+      responseMimeType: "application/json",
+    }
+  });
+
+  return JSON.parse(response.text || '{"compliant": true, "suggestions": "No issues found."}');
 }

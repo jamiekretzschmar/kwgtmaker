@@ -25,9 +25,9 @@
           "type": "string",
           "description": "Detailed step-by-step instructions to build the widget"
         },
-        "kodes": {
-          "type": "string",
-          "description": "Relevant KWGT formulas (Kodes) needed for the widget"
+        "presetJson": {
+          "type": "object",
+          "description": "The complete KWGT preset JSON structure"
         },
         "createdAt": {
           "type": "timestamp",

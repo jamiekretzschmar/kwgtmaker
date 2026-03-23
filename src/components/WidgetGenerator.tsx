@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { generateWidgetMockup, generateWidgetInstructions, searchWidgetKodes, generateWidgetAnimation, suggestWidgetImprovements, enhanceWidgetPrompt } from '../services/gemini';
-import { saveWidget, updateWidget } from '../services/firestore';
+import React, { useState, useEffect, useRef } from 'react';
+import { generateFullWidgetPreset, generateWidgetMockup, generateWidgetAnimation, suggestWidgetImprovements, enhanceWidgetPrompt, auditWidgetContrast } from '../services/gemini';
+import { saveWidget, updateWidget, saveFavoriteColors, loadFavoriteColors } from '../services/firestore';
 import { auth } from '../firebase';
 import { Loader2, Wand2, Search, Download, CheckCircle2, AlertCircle, ChevronDown, PlayCircle, FileText, Sparkles, Palette, Code, Image as ImageIcon } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { exportToKwgt } from '../utils/kwgtExport';
 import { compressImage } from '../utils/image';
+import { useWidget } from '../context/WidgetContext';
 
 const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'];
 
@@ -18,39 +19,63 @@ const POPULAR_PROMPTS = [
   "A material design fitness tracker showing steps and calories"
 ];
 
-interface ExportFile {
-  file: File;
-  name: string;
-  previewUrl?: string;
-  fontFamily?: string;
-}
+import { ExportFile } from '../types';
 
 export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () => void }) {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('1:1');
-  const [loading, setLoading] = useState(false);
+  const [vibe, setVibe] = useState('Minimalist');
   const [error, setError] = useState<string | null>(null);
   const [currentWidgetId, setCurrentWidgetId] = useState<string | null>(null);
   const [showPrompts, setShowPrompts] = useState(false);
 
-  const [fonts, setFonts] = useState<ExportFile[]>([]);
-  const [icons, setIcons] = useState<ExportFile[]>([]);
-  const [bitmaps, setBitmaps] = useState<ExportFile[]>([]);
-  const [fileErrors, setFileErrors] = useState<{fonts?: string, icons?: string, bitmaps?: string}>({});
+  const { state, setState } = useWidget();
+  const { result, loading, auditResult, isAuditing, videoUrl, isGeneratingVideo, videoLoadingMessage, videoError, fonts, icons, bitmaps, fileErrors } = state;
 
-  const [result, setResult] = useState<{
-    mockupUrl: string;
-    instructions: string;
-    kodes: string;
-  } | null>(null);
+  const setResult = (result: any) => setState(prev => ({ ...prev, result }));
+  const setLoading = (loading: boolean) => setState(prev => ({ ...prev, loading }));
+  const setAuditResult = (auditResult: any) => setState(prev => ({ ...prev, auditResult }));
+  const setIsAuditing = (isAuditing: boolean) => setState(prev => ({ ...prev, isAuditing }));
+  const setVideoUrl = (videoUrl: string | null) => setState(prev => ({ ...prev, videoUrl }));
+  const setIsGeneratingVideo = (isGeneratingVideo: boolean) => setState(prev => ({ ...prev, isGeneratingVideo }));
+  const setVideoLoadingMessage = (videoLoadingMessage: string) => setState(prev => ({ ...prev, videoLoadingMessage }));
+  const setVideoError = (videoError: string | null) => setState(prev => ({ ...prev, videoError }));
+  const setFonts = (fonts: ExportFile[]) => setState(prev => ({ ...prev, fonts }));
+  const setIcons = (icons: ExportFile[]) => setState(prev => ({ ...prev, icons }));
+  const setBitmaps = (bitmaps: ExportFile[]) => setState(prev => ({ ...prev, bitmaps }));
+  const setFileErrors = (fileErrors: any) => setState(prev => ({ ...prev, fileErrors }));
+  const setFavoriteColors = (favoriteColors: string[]) => setState(prev => ({ ...prev, favoriteColors }));
 
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
-  const [videoLoadingMessage, setVideoLoadingMessage] = useState('');
-  const [videoError, setVideoError] = useState<string | null>(null);
+  const addFavoriteColor = async (color: string) => {
+    if (!state.favoriteColors.includes(color)) {
+      const newColors = [...state.favoriteColors, color];
+      setFavoriteColors(newColors);
+      if (auth.currentUser) {
+        await saveFavoriteColors(auth.currentUser.uid, newColors);
+      }
+    }
+  };
+
+  const removeFavoriteColor = async (color: string) => {
+    const newColors = state.favoriteColors.filter(c => c !== color);
+    setFavoriteColors(newColors);
+    if (auth.currentUser) {
+      await saveFavoriteColors(auth.currentUser.uid, newColors);
+    }
+  };
 
   const [wizardInput, setWizardInput] = useState('');
   const [wizardLoading, setWizardLoading] = useState(false);
+
+  useEffect(() => {
+    const loadColors = async () => {
+      if (auth.currentUser) {
+        const colors = await loadFavoriteColors(auth.currentUser.uid);
+        setFavoriteColors(colors);
+      }
+    };
+    loadColors();
+  }, []);
   const [wizardResult, setWizardResult] = useState<string | null>(null);
 
   const [primaryColor, setPrimaryColor] = useState('#1E1E1E');
@@ -91,13 +116,27 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
   };
 
   // Cleanup object URLs to avoid memory leaks
+  const prevFontsRef = useRef<ExportFile[]>([]);
+  const fontsRef = useRef(fonts);
+  
+  useEffect(() => {
+    fontsRef.current = fonts;
+    const prevFonts = prevFontsRef.current;
+    // Find fonts that were removed
+    const removedFonts = prevFonts.filter(pf => !fonts.find(f => f.name === pf.name));
+    removedFonts.forEach(f => {
+      if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
+    });
+    prevFontsRef.current = fonts;
+  }, [fonts]);
+
   useEffect(() => {
     return () => {
-      fonts.forEach(f => {
+      fontsRef.current.forEach(f => {
         if (f.previewUrl) URL.revokeObjectURL(f.previewUrl);
       });
     };
-  }, [fonts]);
+  }, []);
 
   const handleGenerateAnimation = async () => {
     if (!result?.mockupUrl) return;
@@ -149,27 +188,36 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     setLoading(true);
     setError(null);
     setResult(null);
+    setAuditResult(null);
     setActiveTab('preview');
 
     const fullPrompt = `${prompt}\n\nColor Palette:\nPrimary: ${primaryColor}\nSecondary: ${secondaryColor}\nAccent: ${accentColor}`;
 
     try {
-      // Run generation tasks in parallel
-      const [mockupUrl, instructions, kodes] = await Promise.all([
-        generateWidgetMockup(fullPrompt, aspectRatio).catch(err => {
-          throw new Error(`Failed to generate mockup: ${err.message || 'Unknown error'}`);
-        }),
-        generateWidgetInstructions(fullPrompt).catch(err => {
-          throw new Error(`Failed to generate instructions: ${err.message || 'Unknown error'}`);
-        }),
-        searchWidgetKodes(fullPrompt).catch(err => {
-          throw new Error(`Failed to search for Kodes: ${err.message || 'Unknown error'}`);
-        })
-      ]);
+      // 1. Generate the full preset and instructions
+      console.log('DEBUG: fonts:', fonts, 'icons:', icons, 'bitmaps:', bitmaps);
+      const { json: presetJson, instructions } = await generateFullWidgetPreset(fullPrompt, vibe, {
+        fonts: (Array.isArray(fonts) ? fonts : []).map(f => f.name),
+        icons: (Array.isArray(icons) ? icons : []).map(i => i.name),
+        bitmaps: (Array.isArray(bitmaps) ? bitmaps : []).map(b => b.name)
+      });
 
+      // 2. Generate the mockup image separately
+      const mockupUrl = await generateWidgetMockup(fullPrompt, aspectRatio);
       const compressedMockupUrl = await compressImage(mockupUrl, 800, 0.7);
 
-      setResult({ mockupUrl: compressedMockupUrl, instructions, kodes });
+      setResult({ mockupUrl: compressedMockupUrl, instructions, presetJson });
+
+      // 3. Audit Contrast
+      setIsAuditing(true);
+      try {
+        const audit = await auditWidgetContrast(presetJson);
+        setAuditResult(audit);
+      } catch (err) {
+        console.error('Audit failed:', err);
+      } finally {
+        setIsAuditing(false);
+      }
 
       // Save to Firestore
       if (currentWidgetId) {
@@ -178,7 +226,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
           aspectRatio,
           mockupUrl: compressedMockupUrl,
           instructions,
-          kodes,
+          presetJson,
         });
       } else {
         const newId = await saveWidget({
@@ -187,7 +235,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
           aspectRatio,
           mockupUrl: compressedMockupUrl,
           instructions,
-          kodes,
+          presetJson,
         });
         if (newId) {
           setCurrentWidgetId(newId);
@@ -219,7 +267,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
 
   const handleExportText = () => {
     if (!result) return;
-    const content = `# Widget: ${prompt}\n\n## Instructions\n${result.instructions}\n\n## Kodes\n${result.kodes}`;
+    const content = `# Widget: ${prompt}\n\n## Instructions\n${result.instructions}\n\n## Preset JSON\n${JSON.stringify(result.presetJson, null, 2)}`;
     const blob = new Blob([content], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -249,29 +297,33 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
       }
 
       if (valid) {
-        const processedFiles = files.map(file => {
-          const exportFile: ExportFile = { file, name: file.name };
-          if (type === 'fonts') {
-            const url = URL.createObjectURL(file);
-            const fontFamily = `custom-font-${Math.random().toString(36).substring(7)}`;
-            
-            // Inject font face
-            const style = document.createElement('style');
-            style.textContent = `
-              @font-face {
-                font-family: '${fontFamily}';
-                src: url('${url}');
+        setter(prev => {
+          const newFiles = [...prev];
+          files.forEach(file => {
+            if (!newFiles.find(f => f.name === file.name)) {
+              const exportFile: ExportFile = { file, name: file.name };
+              if (type === 'fonts') {
+                const url = URL.createObjectURL(file);
+                const fontFamily = `custom-font-${Math.random().toString(36).substring(7)}`;
+                
+                // Inject font face
+                const style = document.createElement('style');
+                style.textContent = `
+                  @font-face {
+                    font-family: '${fontFamily}';
+                    src: url('${url}');
+                  }
+                `;
+                document.head.appendChild(style);
+                
+                exportFile.previewUrl = url;
+                exportFile.fontFamily = fontFamily;
               }
-            `;
-            document.head.appendChild(style);
-            
-            exportFile.previewUrl = url;
-            exportFile.fontFamily = fontFamily;
-          }
-          return exportFile;
+              newFiles.push(exportFile);
+            }
+          });
+          return newFiles;
         });
-
-        setter(processedFiles);
         setFileErrors(prev => ({ ...prev, [type]: undefined }));
       } else {
         setFileErrors(prev => ({ ...prev, [type]: errorMsg }));
@@ -384,24 +436,68 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
                 />
                 <span className="text-[10px] text-neutral-400">Accent</span>
               </div>
+              <button
+                onClick={() => addFavoriteColor(accentColor)}
+                className="w-8 h-8 rounded-full border border-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white bg-neutral-900"
+                title="Save Accent Color"
+              >
+                +
+              </button>
             </div>
+            {state.favoriteColors.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {state.favoriteColors.map(color => (
+                  <div key={color} className="relative group">
+                    <button
+                      onClick={() => setAccentColor(color)}
+                      className="w-6 h-6 rounded-full border border-neutral-700"
+                      style={{ backgroundColor: color }}
+                    />
+                    <button
+                      onClick={() => removeFavoriteColor(color)}
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">
-              Aspect Ratio
-            </label>
-            <select
-              value={aspectRatio}
-              onChange={(e) => setAspectRatio(e.target.value)}
-              className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            >
-              {ASPECT_RATIOS.map((ratio) => (
-                <option key={ratio} value={ratio}>
-                  {ratio}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Aspect Ratio
+              </label>
+              <select
+                value={aspectRatio}
+                onChange={(e) => setAspectRatio(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {ASPECT_RATIOS.map((ratio) => (
+                  <option key={ratio} value={ratio}>
+                    {ratio}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-300 mb-2">
+                Vibe
+              </label>
+              <select
+                value={vibe}
+                onChange={(e) => setVibe(e.target.value)}
+                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {['Minimalist', 'Material You', 'Brutalist', 'Glassmorphism', 'Cyberpunk', 'Retro'].map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
 
@@ -411,7 +507,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             <input type="file" multiple accept=".ttf,.otf" onChange={e => handleFileChange(e, 'fonts', setFonts)} className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors" />
             {fileErrors.fonts && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.fonts}</p>}
             {fonts.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{fonts.length} file(s) selected</p>}
-            {fonts.map((f, i) => (
+            {(Array.isArray(fonts) ? fonts : []).map((f, i) => (
               <div key={i} className="mt-2 space-y-2">
                 <input type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setFonts)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
                 {f.fontFamily && (
@@ -428,7 +524,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             <input type="file" multiple accept=".png,.svg" onChange={e => handleFileChange(e, 'icons', setIcons)} className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors" />
             {fileErrors.icons && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.icons}</p>}
             {icons.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{icons.length} file(s) selected</p>}
-            {icons.map((f, i) => (
+            {(Array.isArray(icons) ? icons : []).map((f, i) => (
               <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setIcons)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
             ))}
           </div>
@@ -437,7 +533,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             <input type="file" multiple accept=".png,.jpg,.jpeg" onChange={e => handleFileChange(e, 'bitmaps', setBitmaps)} className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors" />
             {fileErrors.bitmaps && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.bitmaps}</p>}
             {bitmaps.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{bitmaps.length} file(s) selected</p>}
-            {bitmaps.map((f, i) => (
+            {(Array.isArray(bitmaps) ? bitmaps : []).map((f, i) => (
               <input key={i} type="text" value={f.name} onChange={e => handleFileNameChange(i, e.target.value, setBitmaps)} onKeyDown={e => { if (e.key === 'Enter') e.preventDefault(); }} className="mt-2 w-full bg-neutral-800 border border-neutral-700 rounded-md p-2 text-sm text-white" placeholder="Filename in zip" />
             ))}
           </div>
@@ -570,6 +666,16 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
                     </div>
                   )}
                 </div>
+                {auditResult && (
+                  <div className={`p-4 rounded-xl border ${auditResult.compliant ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400' : 'bg-amber-900/20 border-amber-800 text-amber-400'}`}>
+                    <h4 className="font-semibold flex items-center gap-2">
+                      {auditResult.compliant ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+                      Contrast Audit: {auditResult.compliant ? 'Compliant' : 'Needs Improvement'}
+                    </h4>
+                    <p className="text-sm mt-1">{auditResult.suggestions}</p>
+                  </div>
+                )}
+                {isAuditing && <div className="text-sm text-indigo-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Auditing contrast...</div>}
               </div>
             )}
 
@@ -585,7 +691,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700 overflow-x-auto">
                   <pre className="text-sm text-indigo-300 font-mono whitespace-pre-wrap">
-                    <code>{result.kodes}</code>
+                    <code>{JSON.stringify(result.presetJson, null, 2)}</code>
                   </pre>
                 </div>
               </div>

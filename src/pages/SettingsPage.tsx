@@ -1,15 +1,27 @@
 import React from 'react';
-import { Github, Terminal, HardDrive, Code2 } from 'lucide-react';
+import { Github, Terminal, HardDrive, Code2, Palette } from 'lucide-react';
+import { ThemeSwitcher } from '../components/ThemeSwitcher';
 
 export function SettingsPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-4">Settings & Developer Guide</h1>
+        <h1 className="text-3xl font-bold mb-4">Settings & Developer Guide</h1>
         <p className="text-neutral-400">
           Learn how to run this project locally, manage environment variables, and deploy it to GitHub.
         </p>
       </div>
+
+      <section className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8">
+        <div className="flex items-center gap-3 mb-6">
+          <Palette className="w-6 h-6 text-indigo-400" />
+          <h2 className="text-2xl font-bold">Theme Settings</h2>
+        </div>
+        <div className="flex items-center gap-4">
+          <p className="text-neutral-300">Choose your preferred app theme:</p>
+          <ThemeSwitcher />
+        </div>
+      </section>
 
       <section className="bg-neutral-900 border border-neutral-800 rounded-2xl p-8">
         <div className="flex items-center gap-3 mb-6">

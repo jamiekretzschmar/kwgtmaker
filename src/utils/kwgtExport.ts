@@ -48,6 +48,22 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
     } else {
       bitmapsFolder.file(".gitkeep", "");
     }
+
+    // Add mockup image
+    if (widget.mockupUrl) {
+      try {
+        const response = await fetch(widget.mockupUrl);
+        const blob = await response.blob();
+        zip.file("design_preview.png", blob);
+      } catch (e) {
+        console.error("Failed to add mockup to zip:", e);
+      }
+    }
+
+    // Add instructions
+    if (widget.instructions) {
+      zip.file("instructions.txt", widget.instructions);
+    }
     
     // Parse prompt for keywords
     const promptLower = widget.prompt.toLowerCase();
@@ -121,15 +137,14 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
       features += "GLASSMORPHISM ";
     }
 
-    // Attempt to parse kodes into actual modules if possible, otherwise add as raw text
-    if (widget.kodes) {
+    // Attempt to parse presetJson into actual modules if possible, otherwise add as raw text
+    if (widget.presetJson) {
       try {
-        // Very basic attempt to see if kodes is already a JSON array of modules
-        const parsedKodes = JSON.parse(widget.kodes);
-        if (Array.isArray(parsedKodes)) {
-           viewgroupItems.push(...parsedKodes);
-        } else if (typeof parsedKodes === 'object') {
-           viewgroupItems.push(parsedKodes);
+        // If it's already an object, use it directly
+        if (typeof widget.presetJson === 'object' && widget.presetJson.preset_root && widget.presetJson.preset_root.viewgroup_items) {
+           viewgroupItems.push(...widget.presetJson.preset_root.viewgroup_items);
+        } else if (Array.isArray(widget.presetJson)) {
+           viewgroupItems.push(...widget.presetJson);
         } else {
            throw new Error("Not a valid module array/object");
         }
@@ -137,7 +152,7 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
         // If it's just raw text formulas, add them as a text module
         viewgroupItems.push({
           "internal_type": "TextModule",
-          "text_expression": widget.kodes,
+          "text_expression": JSON.stringify(widget.presetJson),
           "text_size": 30.0,
           "position_padding_top": 100.0,
           "position_padding_left": 50.0

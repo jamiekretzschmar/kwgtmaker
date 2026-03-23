@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Home, Wand2, History, Settings, Layers } from 'lucide-react';
 import { AuthButton } from './Auth';
 import { User } from 'firebase/auth';
+import { BackgroundProcesses } from './BackgroundProcesses';
 
 export function Layout({ children, user }: { children: React.ReactNode, user: User | null }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -108,6 +109,7 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-24 sm:pb-12">
         {children}
       </main>
+      <BackgroundProcesses />
     </div>
   );
 }

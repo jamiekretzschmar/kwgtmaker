@@ -105,14 +105,14 @@ export function WidgetView() {
             >
               <FileText className="w-4 h-4" /> Instructions
             </button>
-            {widget.kodes && (
+            {widget.presetJson && (
               <button
                 onClick={() => setActiveTab('code')}
                 className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeTab === 'code' ? 'border-indigo-500 text-indigo-400' : 'border-transparent text-neutral-400 hover:text-white hover:border-neutral-700'
                 }`}
               >
-                <Code className="w-4 h-4" /> Raw Code
+                <Code className="w-4 h-4" /> Preset JSON
               </button>
             )}
           </div>
@@ -139,11 +139,11 @@ export function WidgetView() {
               </div>
             )}
 
-            {activeTab === 'code' && widget.kodes && (
+            {activeTab === 'code' && widget.presetJson && (
               <div className="space-y-4 animate-in fade-in duration-300">
                 <div className="bg-neutral-800 rounded-2xl p-6 border border-neutral-700 overflow-x-auto">
                   <pre className="text-sm text-indigo-300 font-mono whitespace-pre-wrap">
-                    <code>{widget.kodes}</code>
+                    <code>{JSON.stringify(widget.presetJson, null, 2)}</code>
                   </pre>
                 </div>
               </div>

@@ -14,8 +14,14 @@ service cloud.firestore {
     //   - aspectRatio: string (required, max 10 chars) - The aspect ratio
     //   - mockupUrl: string (required, max 5000000 chars) - The base64 image URL
     //   - instructions: string (required, max 50000 chars) - The instructions
-    //   - kodes: string (optional, max 10000 chars) - The formulas
+    //   - presetJson: map (optional) - The preset JSON
     //   - createdAt: timestamp (required) - Creation time
+    //
+    // Collection: userSettings
+    // Document ID: userId
+    // Fields:
+    //   - userId: string (required) - The ID of the user
+    //   - favoriteColors: list of strings (required) - The user's favorite colors
     //
     // ===============================================================
 
@@ -52,26 +58,27 @@ service cloud.firestore {
         request.resource.data[field].size() <= maxLen;
     }
 
-    function isValidOptionalString(field, minLen, maxLen) {
-      return !(field in request.resource.data) ||
-             (request.resource.data[field] is string &&
-              request.resource.data[field].size() >= minLen &&
-              request.resource.data[field].size() <= maxLen);
-    }
-
     // ===============================================================
     // Domain Validators
     // ===============================================================
     function isValidWidget(data) {
       return hasRequiredFields(['userId', 'prompt', 'aspectRatio', 'mockupUrl', 'instructions', 'createdAt']) &&
-             hasOnlyAllowedFields(['userId', 'prompt', 'aspectRatio', 'mockupUrl', 'instructions', 'kodes', 'createdAt']) &&
+             hasOnlyAllowedFields(['userId', 'prompt', 'aspectRatio', 'mockupUrl', 'instructions', 'presetJson', 'createdAt']) &&
              validStringLength('userId', 1, 100) &&
              validStringLength('prompt', 1, 1000) &&
              validStringLength('aspectRatio', 3, 10) &&
              validStringLength('mockupUrl', 10, 5000000) &&
              validStringLength('instructions', 10, 50000) &&
-             isValidOptionalString('kodes', 0, 10000) &&
+             (!('presetJson' in request.resource.data) || request.resource.data.presetJson is map) &&
              data.createdAt is timestamp;
+    }
+
+    function isValidUserSettings(data) {
+      return hasRequiredFields(['userId', 'favoriteColors']) &&
+             hasOnlyAllowedFields(['userId', 'favoriteColors']) &&
+             data.userId is string &&
+             data.favoriteColors is list &&
+             data.favoriteColors.size() <= 20;
     }
 
     match /widgets/{widgetId} {
@@ -85,6 +92,18 @@ service cloud.firestore {
                     uidNotModified() &&
                     request.resource.data.createdAt == resource.data.createdAt;
       allow delete: if isOwner(resource.data.userId);
+    }
+
+    match /userSettings/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isAuthenticated() && 
+                    isOwner(userId) &&
+                    isValidUserSettings(request.resource.data) &&
+                    request.resource.data.userId == request.auth.uid;
+      allow update: if isOwner(userId) && 
+                    isValidUserSettings(request.resource.data) &&
+                    request.resource.data.userId == request.auth.uid;
+      allow delete: if isOwner(userId);
     }
   }
 }
