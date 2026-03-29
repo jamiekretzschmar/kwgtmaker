@@ -10,24 +10,23 @@ import { useWidget } from '../context/WidgetContext';
 
 const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'];
 
-const POPULAR_PROMPTS = [
-  "A neomorphic dark music player with an animation that looks like an equalizer",
-  "A minimalist glassmorphism weather widget with a 5-day forecast",
-  "A retro 8-bit style clock and battery indicator",
-  "A sleek cyberpunk dashboard with system stats (CPU, RAM, Battery)",
-  "A clean iOS-style calendar and events widget",
-  "A material design fitness tracker showing steps and calories"
+const DESIGN_STYLES = [
+  'Minimalist', 'Material You', 'Brutalist', 'Glassmorphism', 'Cyberpunk', 'Retro',
+  'Neumorphism', 'Skeuomorphic', 'Flat Design', 'Corporate', 'Playful', 'Gothic',
+  'Steampunk', 'Synthwave', 'Anime', 'Comic Book', 'Watercolor', 'Hand-drawn',
+  'Abstract', 'Geometric', 'Organic', 'Industrial', 'Vintage', 'Futuristic',
+  'Monochrome', 'High Contrast'
 ];
 
 import { ExportFile } from '../types';
 
-export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () => void }) {
+export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () => void }) {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [vibe, setVibe] = useState('Minimalist');
   const [error, setError] = useState<string | null>(null);
   const [currentWidgetId, setCurrentWidgetId] = useState<string | null>(null);
-  const [showPrompts, setShowPrompts] = useState(false);
+  const [showStyles, setShowStyles] = useState(false);
 
   const { state, setState } = useWidget();
   const { result, loading, auditResult, isAuditing, videoUrl, isGeneratingVideo, videoLoadingMessage, videoError, fonts, icons, bitmaps, fileErrors } = state;
@@ -40,10 +39,10 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
   const setIsGeneratingVideo = (isGeneratingVideo: boolean) => setState(prev => ({ ...prev, isGeneratingVideo }));
   const setVideoLoadingMessage = (videoLoadingMessage: string) => setState(prev => ({ ...prev, videoLoadingMessage }));
   const setVideoError = (videoError: string | null) => setState(prev => ({ ...prev, videoError }));
-  const setFonts = (fonts: ExportFile[]) => setState(prev => ({ ...prev, fonts }));
-  const setIcons = (icons: ExportFile[]) => setState(prev => ({ ...prev, icons }));
-  const setBitmaps = (bitmaps: ExportFile[]) => setState(prev => ({ ...prev, bitmaps }));
-  const setFileErrors = (fileErrors: any) => setState(prev => ({ ...prev, fileErrors }));
+  const setFonts = (fonts: ExportFile[] | ((prev: ExportFile[]) => ExportFile[])) => setState(prev => ({ ...prev, fonts: typeof fonts === 'function' ? fonts(prev.fonts) : fonts }));
+  const setIcons = (icons: ExportFile[] | ((prev: ExportFile[]) => ExportFile[])) => setState(prev => ({ ...prev, icons: typeof icons === 'function' ? icons(prev.icons) : icons }));
+  const setBitmaps = (bitmaps: ExportFile[] | ((prev: ExportFile[]) => ExportFile[])) => setState(prev => ({ ...prev, bitmaps: typeof bitmaps === 'function' ? bitmaps(prev.bitmaps) : bitmaps }));
+  const setFileErrors = (fileErrors: any | ((prev: any) => any)) => setState(prev => ({ ...prev, fileErrors: typeof fileErrors === 'function' ? fileErrors(prev.fileErrors) : fileErrors }));
   const setFavoriteColors = (favoriteColors: string[]) => setState(prev => ({ ...prev, favoriteColors }));
 
   const addFavoriteColor = async (color: string) => {
@@ -76,7 +75,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     };
     loadColors();
   }, []);
-  const [wizardResult, setWizardResult] = useState<string | null>(null);
+  const [wizardResult, setWizardResult] = useState<string[] | null>(null);
 
   const [primaryColor, setPrimaryColor] = useState('#1E1E1E');
   const [secondaryColor, setSecondaryColor] = useState('#FFFFFF');
@@ -181,9 +180,10 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     }
   };
 
-  const handleGenerate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!prompt.trim() || !auth.currentUser) return;
+  const handleGenerate = async (e?: React.FormEvent, overridePrompt?: string) => {
+    if (e) e.preventDefault();
+    const currentPrompt = overridePrompt || prompt;
+    if (!currentPrompt.trim() || !auth.currentUser) return;
 
     setLoading(true);
     setError(null);
@@ -191,7 +191,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
     setAuditResult(null);
     setActiveTab('preview');
 
-    const fullPrompt = `${prompt}\n\nColor Palette:\nPrimary: ${primaryColor}\nSecondary: ${secondaryColor}\nAccent: ${accentColor}`;
+    const fullPrompt = `${currentPrompt}\n\nColor Palette:\nPrimary: ${primaryColor}\nSecondary: ${secondaryColor}\nAccent: ${accentColor}`;
 
     try {
       // 1. Generate the full preset and instructions
@@ -289,8 +289,8 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
         valid = files.every(f => f.name.toLowerCase().endsWith('.ttf') || f.name.toLowerCase().endsWith('.otf'));
         if (!valid) errorMsg = 'Only .ttf and .otf files are allowed for fonts.';
       } else if (type === 'icons') {
-        valid = files.every(f => f.name.toLowerCase().endsWith('.png') || f.name.toLowerCase().endsWith('.svg'));
-        if (!valid) errorMsg = 'Only .png and .svg files are allowed for icons.';
+        valid = files.every(f => f.name.toLowerCase().endsWith('.png') || f.name.toLowerCase().endsWith('.svg') || f.name.toLowerCase().endsWith('.ttf') || f.name.toLowerCase().endsWith('.json'));
+        if (!valid) errorMsg = 'Only .png, .svg, .ttf, and .json files are allowed for icons.';
       } else if (type === 'bitmaps') {
         valid = files.every(f => f.name.toLowerCase().endsWith('.png') || f.name.toLowerCase().endsWith('.jpg') || f.name.toLowerCase().endsWith('.jpeg'));
         if (!valid) errorMsg = 'Only .png, .jpg, and .jpeg files are allowed for bitmaps.';
@@ -366,24 +366,24 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => setShowPrompts(!showPrompts)}
+                  onClick={() => setShowStyles(!showStyles)}
                   className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                 >
-                  Popular Prompts <ChevronDown className="w-3 h-3" />
+                  Style: {vibe} <ChevronDown className="w-3 h-3" />
                 </button>
-                {showPrompts && (
-                  <div className="absolute right-0 top-full mt-1 w-72 bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl z-10 overflow-hidden">
-                    {POPULAR_PROMPTS.map((p, i) => (
+                {showStyles && (
+                  <div className="absolute right-0 top-full mt-1 w-48 max-h-64 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl z-10 custom-scrollbar">
+                    {DESIGN_STYLES.map((v, i) => (
                       <button
                         key={i}
                         type="button"
                         onClick={() => {
-                          setPrompt(p);
-                          setShowPrompts(false);
+                          setVibe(v);
+                          setShowStyles(false);
                         }}
-                        className="w-full text-left px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-white border-b border-neutral-700/50 last:border-0 transition-colors"
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-white border-b border-neutral-700/50 last:border-0 transition-colors"
                       >
-                        {p}
+                        {v}
                       </button>
                     ))}
                   </div>
@@ -465,7 +465,7 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-neutral-300 mb-2">
                 Aspect Ratio
@@ -478,22 +478,6 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
                 {ASPECT_RATIOS.map((ratio) => (
                   <option key={ratio} value={ratio}>
                     {ratio}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-300 mb-2">
-                Vibe
-              </label>
-              <select
-                value={vibe}
-                onChange={(e) => setVibe(e.target.value)}
-                className="w-full px-4 py-3 bg-neutral-800 border border-neutral-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {['Minimalist', 'Material You', 'Brutalist', 'Glassmorphism', 'Cyberpunk', 'Retro'].map((v) => (
-                  <option key={v} value={v}>
-                    {v}
                   </option>
                 ))}
               </select>
@@ -520,8 +504,8 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
             ))}
           </div>
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">Custom Icons (.png, .svg)</label>
-            <input type="file" multiple accept=".png,.svg" onChange={e => handleFileChange(e, 'icons', setIcons)} className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors" />
+            <label className="block text-sm font-medium text-neutral-300 mb-2">Custom Icons (.png, .svg, .ttf, .json)</label>
+            <input type="file" multiple accept=".png,.svg,.ttf,.json" onChange={e => handleFileChange(e, 'icons', setIcons)} className="w-full text-sm text-neutral-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700 transition-colors" />
             {fileErrors.icons && <p className="text-red-400 text-xs mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{fileErrors.icons}</p>}
             {icons.length > 0 && <p className="text-emerald-400 text-xs mt-1 flex items-center gap-1"><CheckCircle2 className="w-3 h-3" />{icons.length} file(s) selected</p>}
             {(Array.isArray(icons) ? icons : []).map((f, i) => (
@@ -725,10 +709,24 @@ export function WidgetGenerator({ onWidgetGenerated }: { onWidgetGenerated: () =
               </button>
             </form>
             
-            {wizardResult && (
+            {wizardResult && wizardResult.length > 0 && (
               <div className="bg-neutral-800/50 rounded-2xl p-6 border border-indigo-500/30 mt-4 animate-in fade-in slide-in-from-top-2">
-                <div className="prose prose-invert prose-indigo max-w-none">
-                  <Markdown>{wizardResult}</Markdown>
+                <h4 className="text-sm font-medium text-indigo-400 mb-3">Suggested Prompts</h4>
+                <div className="flex flex-col gap-2">
+                  {wizardResult.map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setPrompt(suggestion);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        handleGenerate(undefined, suggestion);
+                      }}
+                      className="text-left px-4 py-3 bg-neutral-900 hover:bg-neutral-700 border border-neutral-700 rounded-xl text-sm text-neutral-300 transition-colors flex items-start gap-3"
+                    >
+                      <Sparkles className="w-4 h-4 text-indigo-400 mt-0.5 shrink-0" />
+                      <span>{suggestion}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

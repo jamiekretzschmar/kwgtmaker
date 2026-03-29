@@ -11,8 +11,8 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
 
   const navLinks = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Generator', path: '/generator', icon: Wand2 },
-    { name: 'History', path: '/history', icon: History },
+    { name: 'Featuator', path: '/generator', icon: Wand2 },
+    { name: 'Vistory', path: '/history', icon: History },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -106,8 +106,10 @@ export function Layout({ children, user }: { children: React.ReactNode, user: Us
         })}
       </nav>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-24 sm:pb-12">
-        {children}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 pb-24 sm:pb-12 flex justify-center w-full">
+        <div className="w-full">
+          {children}
+        </div>
       </main>
       <BackgroundProcesses />
     </div>

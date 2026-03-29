@@ -9,20 +9,20 @@ export function AuthButton({ user }: { user: any }) {
   const handleLogin = async () => {
     setError(null);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
     try {
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error('Login failed:', err);
       
       if (err.code === 'auth/unauthorized-domain') {
-        setError(`Domain not authorized. If you are using an IP address (like 192.168.x.x) on your phone, you must add it to the Authorized Domains in your Firebase Console (Authentication > Settings > Authorized domains).`);
+        const currentDomain = window.location.hostname;
+        setError(`Domain not authorized. You must add "${currentDomain}" to the Authorized Domains in your Firebase Console (Authentication > Settings > Authorized domains).`);
       } else if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/popup-blocked') {
-        // Fallback to redirect on mobile if popup is blocked or closes immediately
-        try {
-          await signInWithRedirect(auth, provider);
-        } catch (redirectErr: any) {
-          setError(`Login failed: ${redirectErr.message}`);
-        }
+        setError(`Popup blocked or closed. Please ensure your browser allows popups for this site, or try opening the app in a new tab.`);
       } else {
         setError(`Login failed: ${err.message}`);
       }

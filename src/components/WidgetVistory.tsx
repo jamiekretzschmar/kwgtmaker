@@ -18,7 +18,7 @@ const aspectRatioMap: Record<string, string> = {
   '21:9': 'aspect-[21/9]',
 };
 
-export function WidgetHistory({ refreshTrigger }: { refreshTrigger: number }) {
+export function WidgetVistory({ refreshTrigger, user }: { refreshTrigger: number, user: any }) {
   const [widgets, setWidgets] = useState<WidgetData[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -38,10 +38,10 @@ export function WidgetHistory({ refreshTrigger }: { refreshTrigger: number }) {
 
   useEffect(() => {
     const fetchWidgets = async () => {
-      if (!auth.currentUser) return;
+      if (!user) return;
       setLoading(true);
       try {
-        const data = await loadWidgets(auth.currentUser.uid);
+        const data = await loadWidgets(user.uid);
         // Sort by createdAt descending
         data.sort((a, b) => {
           const timeA = a.createdAt?.toMillis?.() || 0;
@@ -56,7 +56,7 @@ export function WidgetHistory({ refreshTrigger }: { refreshTrigger: number }) {
       }
     };
     fetchWidgets();
-  }, [refreshTrigger]);
+  }, [refreshTrigger, user]);
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();

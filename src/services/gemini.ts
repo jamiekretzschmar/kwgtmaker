@@ -160,20 +160,34 @@ export async function generateWidgetAnimation(prompt: string, imageBase64: strin
   }
 }
 
-export async function suggestWidgetImprovements(originalPrompt: string, userRequest?: string): Promise<string> {
+export async function suggestWidgetImprovements(originalPrompt: string, userRequest?: string): Promise<string[]> {
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
 
   const prompt = userRequest 
-    ? `I have a KWGT widget based on this prompt: "${originalPrompt}". I want to make these changes: "${userRequest}". Please suggest how to implement these changes in KWGT, including any specific formulas, layer structures, or design tweaks needed.`
-    : `I have a KWGT widget based on this prompt: "${originalPrompt}". Please suggest 3-5 creative ways to improve or enhance this widget's design and functionality in KWGT. Include specific formulas or layout ideas.`;
+    ? `I have a KWGT widget based on this prompt: "${originalPrompt}". I want to make these changes: "${userRequest}". Please provide 3-5 alternative full prompts that incorporate these changes, ready to be used to generate a new widget. Return ONLY a JSON array of strings.`
+    : `I have a KWGT widget based on this prompt: "${originalPrompt}". Please suggest 3-5 creative ways to improve or enhance this widget's design and functionality. Return ONLY a JSON array of strings, where each string is a complete, ready-to-use prompt for generating the improved widget.`;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.STRING
+          }
+        }
+      }
     });
-    return response.text || 'No suggestions generated.';
+    const text = response.text || '[]';
+    try {
+      return JSON.parse(text);
+    } catch (e) {
+      return [text];
+    }
   } catch (error) {
     console.error("Error generating suggestions:", error);
     throw new Error("Failed to generate suggestions.");
@@ -185,36 +199,86 @@ export async function generateFullWidgetPreset(prompt: string, vibe: string, ass
 
   try {
     // 1. Generate the JSON Preset
-    const jsonResponse = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
-      contents: `Generate a complete KWGT preset JSON for a widget based on this prompt: "${prompt}".
+      const jsonResponse = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: `Generate a complete KWGT preset JSON for a widget based on this prompt: "${prompt}".
       
-      CRITICAL INSTRUCTIONS:
+      CRITICAL ARCHITECTURAL INSTRUCTIONS:
       - Vibe: ${vibe}
+      - Style: If neomorphic, use precise shadow calculations. Neumorphism requires two shadows: 
+        1. A light shadow (e.g., #FFFFFF30) at a negative offset (e.g., -10, -10).
+        2. A dark shadow (e.g., #00000050) at a positive offset (e.g., 10, 10).
+        3. The background color must be the same as the element's color to create the "extruded" look.
       - Assets to include/map: 
         - Fonts: ${assets.fonts.join(', ')}
         - Icons: ${assets.icons.join(', ')}
         - Bitmaps: ${assets.bitmaps.join(', ')}
-      - The JSON MUST follow this exact structure:
+      - The JSON MUST follow this exact structure and property naming convention (e.g., paint_color, fx_shadow_color, internal_events):
       {
-        "preset_info": { "version": 11, "title": "...", "description": "...", "author": "...", "email": "...", "width": 1080, "height": 1051, "features": "...", "release": 123456789, "locked": false, "pflags": 0 },
+        "preset_info": {
+          "title": "A sleek dark enhanced 3D",
+          "features": "BATTERY NEUMORPHISM",
+          "release": 351031415,
+          "width": 720,
+          "height": 720
+        },
         "preset_root": {
-          "internal_events": [{ "action": "KUSTOM_ACTION" }],
           "internal_type": "RootLayerModule",
-          "globals_list": { ... },
-          "internal_toggles": { ... },
-          "internal_formulas": { ... },
-          "viewgroup_items": [ ... ]
+          "config_scale_value": 100,
+          "viewgroup_items": [
+            {
+              "internal_type": "ShapeModule",
+              "shape": "RECT",
+              "width": 720,
+              "height": 300,
+              "paint_color": "#FF1E1E1E",
+              "shape_corners": 40
+            },
+            {
+              "internal_type": "StackLayerModule",
+              "orientation": "HORIZONTAL",
+              "justification": "CENTER",
+              "margin": 20,
+              "viewgroup_items": [
+                {
+                  "internal_type": "OverlapLayerModule",
+                  "internal_events": [
+                    {
+                      "action": "INTENT",
+                      "intent": "com.android.settings/.Settings$BatterySaverSettingsActivity"
+                    }
+                  ],
+                  "viewgroup_items": [
+                    {
+                      "internal_type": "ShapeModule",
+                      "shape": "CIRCLE",
+                      "size": 140,
+                      "paint_color": "#FF252525",
+                      "fx_shadow_color": "#CC000000",
+                      "fx_shadow_blur": 20,
+                      "fx_shadow_distance": 12,
+                      "fx_shadow_direction": 135
+                    },
+                    {
+                      "internal_type": "TextModule",
+                      "position_anchor": "CENTER",
+                      "text_size": 24,
+                      "text_expression": "$bi(level)$%"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       }
-      - Map the provided asset filenames into the JSON structure where appropriate (e.g., font family names, image paths).
+      - Use Overlap Groups to layer shadows and content.
+      - Map the provided asset filenames into the JSON structure where appropriate.
       - ONLY output valid JSON.
       - DO NOT include markdown formatting like \`\`\`json or \`\`\`.
       - DO NOT include any explanatory text.
-      - Use standard KWGT internal types.
-      - Ensure all formulas and globals are correctly structured.
       `,
-    });
+      });
 
     let jsonStr = jsonResponse.text || "";
     jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();

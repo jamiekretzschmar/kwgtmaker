@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { WidgetGenerator } from './components/WidgetGenerator';
-import { WidgetHistory } from './components/WidgetHistory';
+import { WidgetFeatuator } from './components/WidgetFeatuator';
+import { WidgetVistory } from './components/WidgetVistory';
 import { WidgetView } from './components/WidgetView';
 import { Layout } from './components/Layout';
 import { LandingPage } from './pages/LandingPage';
@@ -17,12 +17,12 @@ function GeneratorPage({ user, refreshTrigger, setRefreshTrigger }: { user: User
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-3xl font-bold mb-2">Widget Generator</h2>
+        <h2 className="text-3xl font-bold mb-2">Widget Featuator</h2>
         <p className="text-neutral-400">Describe your widget and let AI build it for you.</p>
       </div>
       
       {user ? (
-        <WidgetGenerator onWidgetGenerated={() => setRefreshTrigger(prev => prev + 1)} />
+        <WidgetFeatuator onWidgetGenerated={() => setRefreshTrigger(prev => prev + 1)} />
       ) : (
         <div className="max-w-4xl mx-auto p-12 bg-neutral-900 rounded-2xl border border-neutral-800 text-center">
           <Layers className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
@@ -41,12 +41,12 @@ function HistoryPage({ user, refreshTrigger }: { user: User | null, refreshTrigg
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-3xl font-bold mb-2">Your Widgets</h2>
+        <h2 className="text-3xl font-bold mb-2">Your Vistory</h2>
         <p className="text-neutral-400">View, share, and export your previously generated widgets.</p>
       </div>
       
       {user ? (
-        <WidgetHistory refreshTrigger={refreshTrigger} />
+        <WidgetVistory refreshTrigger={refreshTrigger} user={user} />
       ) : (
         <div className="max-w-4xl mx-auto p-12 bg-neutral-900 rounded-2xl border border-neutral-800 text-center">
           <Layers className="w-12 h-12 text-neutral-600 mx-auto mb-4" />

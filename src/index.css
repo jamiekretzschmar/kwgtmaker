@@ -42,3 +42,34 @@
   }
 }
 
+@layer components {
+  /* Module 2: Mobile Viewport Simulation CSS Engine */
+  .device-chassis {
+    /* Rigid viewport simulator dimensions */
+    width: 360px;
+    height: 800px;
+    
+    /* Simulate physical bezels */
+    border: 12px solid #1a1a1a;
+    border-radius: 3rem;
+    
+    /* Internal layout geometry */
+    display: flex;
+    flex-direction: column;
+    
+    /* Prevent content overflow outside the chassis */
+    overflow: hidden;
+    position: relative;
+    background-color: #000;
+  }
+
+  /* Enforce mobile accessibility standards for interactive elements */
+  .device-chassis button,
+  .device-chassis input,
+  .device-chassis select,
+  .device-chassis a {
+    min-width: 48px;
+    min-height: 48px;
+  }
+}
+
