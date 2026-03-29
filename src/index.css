@@ -8,19 +8,14 @@
 
 @layer base {
   :root {
-    --bg: #ffffff;
-    --text: #1a1a1a;
-  }
-  .dark {
-    --bg: #0a0a0a;
-    --text: #ffffff;
-  }
-  .lettuce {
-    --bg: #e8f5e9;
-    --text: #2e7d32;
+    --bg: #eef2ee;
+    --text: #1a201a;
   }
   body {
-    @apply bg-[var(--bg)] text-[var(--text)];
+    @apply bg-[var(--bg)] text-[var(--text)] antialiased min-h-screen selection:bg-[#7e9c7e] selection:text-white;
+    background-image: radial-gradient(at 0% 0%, hsla(130, 20%, 90%, 1) 0, transparent 50%), 
+                      radial-gradient(at 100% 100%, hsla(130, 30%, 85%, 1) 0, transparent 50%);
+    background-attachment: fixed;
   }
 }
 
@@ -30,19 +25,51 @@
     height: 8px;
   }
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(126, 156, 126, 0.1);
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(126, 156, 126, 0.3);
     border-radius: 4px;
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(126, 156, 126, 0.5);
   }
 }
 
 @layer components {
+  .glass-panel {
+    @apply bg-white/40 backdrop-blur-md border border-white/60 shadow-[0_8px_32px_0_rgba(60,80,60,0.05)] rounded-2xl;
+  }
+  
+  .neo-button {
+    @apply bg-[#eef2ee] text-[#2c3b2c] font-medium rounded-xl border border-white/50
+           shadow-[4px_4px_10px_rgba(160,175,160,0.5),-4px_-4px_10px_rgba(255,255,255,0.9)]
+           hover:shadow-[2px_2px_5px_rgba(160,175,160,0.5),-2px_-2px_5px_rgba(255,255,255,0.9)]
+           active:shadow-[inset_4px_4px_10px_rgba(160,175,160,0.5),inset_-4px_-4px_10px_rgba(255,255,255,0.9)]
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .neo-button-primary {
+    @apply bg-[#7e9c7e] text-white font-medium rounded-xl border border-[#8eb08e]
+           shadow-[4px_4px_10px_rgba(160,175,160,0.5),-4px_-4px_10px_rgba(255,255,255,0.9)]
+           hover:bg-[#6c876c]
+           active:shadow-[inset_4px_4px_10px_rgba(80,100,80,0.5),inset_-4px_-4px_10px_rgba(140,170,140,0.9)]
+           transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .neo-input {
+    @apply bg-[#eef2ee] text-[#1a201a] rounded-xl border-none outline-none px-4 py-2
+           shadow-[inset_4px_4px_8px_rgba(160,175,160,0.5),inset_-4px_-4px_8px_rgba(255,255,255,0.9)]
+           focus:shadow-[inset_6px_6px_12px_rgba(160,175,160,0.6),inset_-6px_-6px_12px_rgba(255,255,255,1)]
+           transition-all duration-200 placeholder:text-[#7e9c7e]/70;
+  }
+
+  .neo-card {
+    @apply bg-[#eef2ee] rounded-2xl border border-white/50
+           shadow-[6px_6px_14px_rgba(160,175,160,0.5),-6px_-6px_14px_rgba(255,255,255,0.9)];
+  }
+
   /* Module 2: Mobile Viewport Simulation CSS Engine */
   .device-chassis {
     /* Rigid viewport simulator dimensions */
@@ -50,8 +77,9 @@
     height: 800px;
     
     /* Simulate physical bezels */
-    border: 12px solid #1a1a1a;
+    border: 12px solid #eef2ee;
     border-radius: 3rem;
+    box-shadow: 10px 10px 20px rgba(160,175,160,0.5), -10px -10px 20px rgba(255,255,255,0.9);
     
     /* Internal layout geometry */
     display: flex;
@@ -60,7 +88,7 @@
     /* Prevent content overflow outside the chassis */
     overflow: hidden;
     position: relative;
-    background-color: #000;
+    background-color: #eef2ee;
   }
 
   /* Enforce mobile accessibility standards for interactive elements */
@@ -70,6 +98,26 @@
   .device-chassis a {
     min-width: 48px;
     min-height: 48px;
+  }
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .rotate-y-12 {
+    transform: rotateY(12deg);
+  }
+
+  .rotate-x-6 {
+    transform: rotateX(6deg);
+  }
+
+  .hover\:rotate-y-12:hover {
+    transform: rotateY(12deg);
+  }
+
+  .hover\:rotate-x-6:hover {
+    transform: rotateX(6deg);
   }
 }
 

@@ -5,6 +5,7 @@ export async function exportAllData() {
     const widgets = await localDb.widgets.toArray();
     const userSettings = await localDb.userSettings.toArray();
     const assets = await localDb.assets.toArray();
+    const palettes = await localDb.palettes.toArray();
 
     // Convert blobs to base64 for JSON export
     const serializedAssets = await Promise.all(
@@ -23,12 +24,13 @@ export async function exportAllData() {
     );
 
     const backupData = {
-      version: 1,
+      version: 2,
       timestamp: Date.now(),
       data: {
         widgets,
         userSettings,
         assets: serializedAssets,
+        palettes,
       },
     };
 
@@ -61,13 +63,29 @@ export async function importData(file: File) {
       throw new Error('Invalid backup file format');
     }
 
-    const { widgets, userSettings, assets } = backupData.data;
+    const { widgets, userSettings, assets, palettes } = backupData.data;
 
-    await localDb.transaction('rw', localDb.widgets, localDb.userSettings, localDb.assets, async () => {
+    let deserializedAssets: any[] = [];
+    if (assets && assets.length > 0) {
+      // Convert base64 back to Blob outside the transaction
+      deserializedAssets = await Promise.all(
+        assets.map(async (asset: any) => {
+          const res = await fetch(asset.data);
+          const blob = await res.blob();
+          return {
+            ...asset,
+            data: blob,
+          };
+        })
+      );
+    }
+
+    await localDb.transaction('rw', localDb.widgets, localDb.userSettings, localDb.assets, localDb.palettes, async () => {
       // Clear existing data (optional, maybe ask user first in UI)
       // await localDb.widgets.clear();
       // await localDb.userSettings.clear();
       // await localDb.assets.clear();
+      // await localDb.palettes.clear();
 
       if (widgets && widgets.length > 0) {
         await localDb.widgets.bulkPut(widgets);
@@ -77,19 +95,12 @@ export async function importData(file: File) {
         await localDb.userSettings.bulkPut(userSettings);
       }
 
-      if (assets && assets.length > 0) {
-        // Convert base64 back to Blob
-        const deserializedAssets = await Promise.all(
-          assets.map(async (asset: any) => {
-            const res = await fetch(asset.data);
-            const blob = await res.blob();
-            return {
-              ...asset,
-              data: blob,
-            };
-          })
-        );
+      if (deserializedAssets.length > 0) {
         await localDb.assets.bulkPut(deserializedAssets);
+      }
+
+      if (palettes && palettes.length > 0) {
+        await localDb.palettes.bulkPut(palettes);
       }
     });
 

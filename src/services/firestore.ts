@@ -84,7 +84,7 @@ export interface WidgetData {
 // Convert local widget to the format expected by the UI
 function mapLocalToWidgetData(local: LocalWidget): WidgetData {
   return {
-    id: local.id,
+    id: local.id?.toString(),
     userId: local.userId,
     prompt: local.prompt,
     aspectRatio: local.aspectRatio,
@@ -127,14 +127,16 @@ export async function saveWidget(data: Omit<WidgetData, 'id' | 'createdAt'>) {
 
 export async function updateWidget(widgetId: string, data: Partial<Omit<WidgetData, 'id' | 'createdAt' | 'userId'>>) {
   try {
+    const id = isNaN(Number(widgetId)) ? widgetId : Number(widgetId);
+    
     // Update locally
-    await localDb.widgets.update(widgetId, {
+    await localDb.widgets.update(id as any, {
       ...data,
       updatedAt: Date.now()
     });
 
     // Try to sync to cloud if it has a cloudId
-    const widget = await localDb.widgets.get(widgetId);
+    const widget = await localDb.widgets.get(id as any);
     if (widget?.cloudId && auth.currentUser) {
       updateDoc(doc(db, 'widgets', widget.cloudId), data)
         .catch(e => console.warn("Background sync failed", e));
@@ -163,7 +165,14 @@ export async function loadWidgets(userId: string): Promise<WidgetData[]> {
 
 export async function getWidget(widgetId: string): Promise<WidgetData | null> {
   try {
-    const localWidget = await localDb.widgets.get(widgetId);
+    // Try as string first
+    let localWidget = await localDb.widgets.get(widgetId as any);
+    
+    // If not found and it looks like a number, try as number
+    if (!localWidget && !isNaN(Number(widgetId))) {
+      localWidget = await localDb.widgets.get(Number(widgetId) as any);
+    }
+
     if (localWidget) {
       return mapLocalToWidgetData(localWidget);
     }
@@ -176,10 +185,11 @@ export async function getWidget(widgetId: string): Promise<WidgetData | null> {
 
 export async function deleteWidget(widgetId: string) {
   try {
-    const widget = await localDb.widgets.get(widgetId);
+    const id = isNaN(Number(widgetId)) ? widgetId : Number(widgetId);
+    const widget = await localDb.widgets.get(id as any);
     
     // Delete locally
-    await localDb.widgets.delete(widgetId);
+    await localDb.widgets.delete(id as any);
 
     // Try to delete from cloud if it has a cloudId
     if (widget?.cloudId && auth.currentUser) {
@@ -247,23 +257,23 @@ export async function loadFavoriteColors(userId: string): Promise<string[]> {
   }
 }
 
-export async function saveCustomPalette(userId: string, palette: { id: string; name: string; colors: string[] }) {
+export async function saveCustomPalette(userId: string, palette: { id?: string; name: string; colors: string[] }) {
   try {
-    const settings = await localDb.userSettings.get(userId) || { userId, favoriteColors: [], updatedAt: Date.now() };
-    const customPalettes = settings.customPalettes || [];
-    
-    const existingIndex = customPalettes.findIndex(p => p.id === palette.id);
-    if (existingIndex >= 0) {
-      customPalettes[existingIndex] = palette;
-    } else {
-      customPalettes.push(palette);
-    }
+    const paletteData = {
+      userId,
+      name: palette.name,
+      primary: palette.colors[0],
+      secondary: palette.colors[1],
+      accent: palette.colors[2],
+      createdAt: Date.now()
+    };
 
-    await localDb.userSettings.put({
-      ...settings,
-      customPalettes,
-      updatedAt: Date.now()
-    });
+    if (palette.id) {
+      const id = isNaN(Number(palette.id)) ? palette.id : Number(palette.id);
+      await localDb.palettes.update(id as any, paletteData);
+    } else {
+      await localDb.palettes.add(paletteData);
+    }
   } catch (error) {
     console.error("Failed to save custom palette:", error);
     throw error;
@@ -272,8 +282,12 @@ export async function saveCustomPalette(userId: string, palette: { id: string; n
 
 export async function loadCustomPalettes(userId: string) {
   try {
-    const settings = await localDb.userSettings.get(userId);
-    return settings?.customPalettes || [];
+    const palettes = await localDb.palettes.where('userId').equals(userId).toArray();
+    return palettes.map(p => ({
+      id: p.id?.toString() || '',
+      name: p.name,
+      colors: [p.primary, p.secondary, p.accent]
+    }));
   } catch (error) {
     console.error("Failed to load custom palettes:", error);
     return [];
@@ -282,14 +296,8 @@ export async function loadCustomPalettes(userId: string) {
 
 export async function deleteCustomPalette(userId: string, paletteId: string) {
   try {
-    const settings = await localDb.userSettings.get(userId);
-    if (settings && settings.customPalettes) {
-      settings.customPalettes = settings.customPalettes.filter(p => p.id !== paletteId);
-      await localDb.userSettings.put({
-        ...settings,
-        updatedAt: Date.now()
-      });
-    }
+    const id = isNaN(Number(paletteId)) ? paletteId : Number(paletteId);
+    await localDb.palettes.delete(id as any);
   } catch (error) {
     console.error("Failed to delete custom palette:", error);
     throw error;
@@ -325,7 +333,8 @@ export async function loadAssets(userId: string, type: 'font' | 'icon' | 'bitmap
 
 export async function deleteAsset(assetId: string) {
   try {
-    await localDb.assets.delete(assetId);
+    const id = isNaN(Number(assetId)) ? assetId : Number(assetId);
+    await localDb.assets.delete(id as any);
   } catch (error) {
     console.error("Failed to delete asset:", error);
     throw error;

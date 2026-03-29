@@ -8,9 +8,11 @@ export interface KwgtExportOptions {
   version?: number;
   release?: number;
   pflags?: number;
+  format?: 'kwgt' | 'klwp' | 'kwlc';
 }
 
 export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptions) {
+  const format = options?.format || 'kwgt';
   try {
     // Parse prompt for keywords
     const promptLower = widget.prompt.toLowerCase();
@@ -212,7 +214,7 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
 
     // Get the binary blob from the response
     const blob = await response.blob();
-    const fileName = `${dynamicTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${widget.id || 'export'}.kwgt`;
+    const fileName = `${dynamicTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${widget.id || 'export'}.${format}`;
     
     // Try File System Access API first
     try {
@@ -220,8 +222,8 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
         const handle = await (window as any).showSaveFilePicker({
           suggestedName: fileName,
           types: [{
-            description: 'KWGT Widget',
-            accept: { 'application/octet-stream': ['.kwgt'] },
+            description: format.toUpperCase() + ' Preset',
+            accept: { 'application/octet-stream': ['.' + format] },
           }],
         });
         const writable = await handle.createWritable();

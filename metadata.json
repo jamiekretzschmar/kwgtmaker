@@ -1,5 +1,5 @@
 {
   "name": "kwgtmaker",
-  "description": "Generate KWGT widgets from text prompts with mockups, instructions, and Kodes.",
+  "description": "AI-powered KWGT/KLWP/KWLC widget generator with 3D mockups, wallpaper color extraction, and real-time data simulation.",
   "requestFramePermissions": []
 }

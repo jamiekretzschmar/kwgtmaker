@@ -40,19 +40,19 @@ export function AuthButton({ user }: { user: any }) {
   if (user) {
     return (
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 px-3 py-1.5 neo-card bg-white/50">
           {user.photoURL ? (
-            <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full" referrerPolicy="no-referrer" />
+            <img src={user.photoURL} alt="Avatar" className="w-8 h-8 rounded-full border-2 border-[#7e9c7e]" referrerPolicy="no-referrer" />
           ) : (
-            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-sm font-bold">
+            <div className="w-8 h-8 bg-[#7e9c7e] rounded-full flex items-center justify-center text-sm font-bold text-white">
               {user.email?.[0].toUpperCase()}
             </div>
           )}
-          <span className="text-sm font-medium hidden sm:block">{user.displayName || user.email}</span>
+          <span className="text-sm font-bold text-[#1a201a] hidden sm:block">{user.displayName || user.email}</span>
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:text-white hover:bg-neutral-800 rounded-lg transition-colors"
+          className="neo-button flex items-center gap-2 px-4 py-2 text-sm font-bold text-[#7e9c7e] hover:text-red-500"
         >
           <LogOut className="w-4 h-4" />
           Logout
@@ -65,18 +65,18 @@ export function AuthButton({ user }: { user: any }) {
     <div className="flex flex-col items-center gap-2">
       <button
         onClick={handleLogin}
-        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+        className="neo-button-primary flex items-center gap-2 px-6 py-2.5 text-sm font-bold"
       >
         <LogIn className="w-4 h-4" />
         Sign In with Google
       </button>
       {error && (
-        <div className="absolute top-20 right-4 max-w-sm bg-red-500/10 border border-red-500/50 text-red-200 px-4 py-3 rounded-xl text-sm flex items-start gap-3 shadow-xl z-50 animate-in fade-in slide-in-from-top-4">
-          <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-400" />
-          <div className="flex flex-col gap-1">
-            <span className="font-semibold text-red-300">Authentication Error</span>
-            <span>{error}</span>
-            <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300 text-xs text-left mt-1 underline">Dismiss</button>
+        <div className="fixed top-24 right-6 max-w-sm bg-white/90 backdrop-blur-md border-2 border-red-500/30 text-red-700 px-6 py-4 rounded-2xl text-sm flex items-start gap-4 shadow-2xl z-[100] animate-in fade-in slide-in-from-right-8 duration-500">
+          <AlertCircle className="w-6 h-6 shrink-0 mt-0.5 text-red-500" />
+          <div className="flex flex-col gap-2">
+            <span className="font-bold text-red-600 text-base uppercase tracking-wider">Authentication Error</span>
+            <span className="font-medium leading-relaxed">{error}</span>
+            <button onClick={() => setError(null)} className="neo-button px-3 py-1 text-xs font-bold self-start mt-2">Dismiss</button>
           </div>
         </div>
       )}

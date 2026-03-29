@@ -22,17 +22,17 @@ function GeneratorPage({ user, refreshTrigger, setRefreshTrigger }: { user: User
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-3xl font-bold mb-2">Widget Featuator</h2>
-        <p className="text-neutral-400">Describe your widget and let AI build it for you.</p>
+        <h2 className="text-3xl font-bold mb-2 text-[#1a201a]">Widget Featuator</h2>
+        <p className="text-[#7e9c7e]">Describe your widget and let AI build it for you.</p>
       </div>
       
       {user ? (
         <WidgetFeatuator key={location.key} onWidgetGenerated={() => setRefreshTrigger(prev => prev + 1)} editWidget={editWidget} />
       ) : (
-        <div className="max-w-4xl mx-auto p-12 bg-neutral-900 rounded-2xl border border-neutral-800 text-center">
-          <Layers className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Sign in to start generating</h3>
-          <p className="text-neutral-400 mb-6">You need to be signed in to generate and save your widgets.</p>
+        <div className="max-w-4xl mx-auto p-12 neo-card text-center">
+          <Layers className="w-12 h-12 text-[#7e9c7e]/40 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2 text-[#1a201a]">Sign in to start generating</h3>
+          <p className="text-[#7e9c7e] mb-6">You need to be signed in to generate and save your widgets.</p>
           <div className="flex justify-center">
             <AuthButton user={user} />
           </div>
@@ -46,17 +46,17 @@ function HistoryPage({ user, refreshTrigger }: { user: User | null, refreshTrigg
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
-        <h2 className="text-3xl font-bold mb-2">Your Vistory</h2>
-        <p className="text-neutral-400">View, share, and export your previously generated widgets.</p>
+        <h2 className="text-3xl font-bold mb-2 text-[#1a201a]">Your Vistory</h2>
+        <p className="text-[#7e9c7e]">View, share, and export your previously generated widgets.</p>
       </div>
       
       {user ? (
         <WidgetVistory refreshTrigger={refreshTrigger} user={user} />
       ) : (
-        <div className="max-w-4xl mx-auto p-12 bg-neutral-900 rounded-2xl border border-neutral-800 text-center">
-          <Layers className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold mb-2">Sign in to view history</h3>
-          <p className="text-neutral-400 mb-6">You need to be signed in to view your saved widgets.</p>
+        <div className="max-w-4xl mx-auto p-12 neo-card text-center">
+          <Layers className="w-12 h-12 text-[#7e9c7e]/40 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold mb-2 text-[#1a201a]">Sign in to view history</h3>
+          <p className="text-[#7e9c7e] mb-6">You need to be signed in to view your saved widgets.</p>
           <div className="flex justify-center">
             <AuthButton user={user} />
           </div>
@@ -65,6 +65,8 @@ function HistoryPage({ user, refreshTrigger }: { user: User | null, refreshTrigg
     </div>
   );
 }
+
+import { Toaster } from 'sonner';
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -81,8 +83,8 @@ export default function App() {
 
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#eef2ee] flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-[#7e9c7e] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -91,6 +93,7 @@ export default function App() {
     <TaskProvider>
       <ThemeProvider>
         <WidgetProvider>
+          <Toaster position="top-center" richColors />
           <Layout user={user}>
             <Routes>
               <Route path="/" element={<LandingPage />} />

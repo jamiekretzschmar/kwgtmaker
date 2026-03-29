@@ -1,7 +1,7 @@
 import Dexie, { Table } from 'dexie';
 
 export interface LocalWidget {
-  id?: string; // Auto-incremented local ID
+  id?: number; // Auto-incremented local ID
   cloudId?: string; // ID from Firestore if it was synced
   userId: string;
   prompt: string;
@@ -21,7 +21,7 @@ export interface LocalUserSettings {
 }
 
 export interface LocalAsset {
-  id?: string;
+  id?: number;
   userId: string;
   type: 'font' | 'icon' | 'bitmap';
   name: string;
@@ -29,18 +29,30 @@ export interface LocalAsset {
   createdAt: number;
 }
 
+export interface LocalPalette {
+  id?: number;
+  userId: string;
+  name: string;
+  primary: string;
+  secondary: string;
+  accent: string;
+  createdAt: number;
+}
+
 export class AppDatabase extends Dexie {
-  widgets!: Table<LocalWidget, string>;
+  widgets!: Table<LocalWidget, number>;
   userSettings!: Table<LocalUserSettings, string>;
-  assets!: Table<LocalAsset, string>;
+  assets!: Table<LocalAsset, number>;
+  palettes!: Table<LocalPalette, number>;
 
   constructor() {
     super('KwgtMakerDB');
     
-    this.version(1).stores({
+    this.version(2).stores({
       widgets: '++id, cloudId, userId, createdAt, updatedAt',
       userSettings: 'userId',
-      assets: '++id, userId, type, name'
+      assets: '++id, userId, type, name',
+      palettes: '++id, userId, name'
     });
   }
 }

@@ -57,7 +57,7 @@ export async function generateWidgetMockup(prompt: string, aspectRatio: string):
         }
       },
     }),
-    60000,
+    120000,
     "Mockup generation timed out."
   );
 
@@ -302,7 +302,7 @@ export async function generateFullWidgetPreset(prompt: string, vibe: string, ass
         - DO NOT include any explanatory text.
         `,
         }),
-        90000,
+        120000,
         "JSON Preset generation timed out."
       );
 
@@ -341,7 +341,7 @@ export async function generateFullWidgetPreset(prompt: string, vibe: string, ass
         
         Instructions:`,
       }),
-      60000,
+      90000,
       "Instructions generation timed out."
     );
 
