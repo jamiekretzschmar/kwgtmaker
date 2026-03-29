@@ -13,5 +13,8 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID || '(default)');
+const databaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
+export const db = databaseId && databaseId !== '(default)' 
+  ? getFirestore(app, databaseId) 
+  : getFirestore(app);
 export const auth = getAuth(app);

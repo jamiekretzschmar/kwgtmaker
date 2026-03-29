@@ -1,5 +1,17 @@
 import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 
+export async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> {
+  let timeoutHandle: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+  });
+
+  return Promise.race([
+    promise,
+    timeoutPromise,
+  ]).finally(() => clearTimeout(timeoutHandle));
+}
+
 export async function enhanceWidgetPrompt(prompt: string): Promise<string> {
   const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
   const ai = new GoogleGenAI({ apiKey });
@@ -29,21 +41,25 @@ export async function generateWidgetMockup(prompt: string, aspectRatio: string):
   if (aspectRatio === '3:2') mappedRatio = '4:3';
   if (aspectRatio === '21:9') mappedRatio = '16:9';
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-image',
-    contents: {
-      parts: [
-        {
-          text: `A high quality UI mockup of a KWGT Android widget on a clean background. ${prompt}`,
-        },
-      ],
-    },
-    config: {
-      imageConfig: {
-        aspectRatio: mappedRatio as any,
-      }
-    },
-  });
+  const response = await withTimeout(
+    ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [
+          {
+            text: `A high quality UI mockup of a KWGT Android widget on a clean background. ${prompt}`,
+          },
+        ],
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: mappedRatio as any,
+        }
+      },
+    }),
+    60000,
+    "Mockup generation timed out."
+  );
 
   for (const part of response.candidates?.[0]?.content?.parts || []) {
     if (part.inlineData) {
@@ -133,7 +149,13 @@ export async function generateWidgetAnimation(prompt: string, imageBase64: strin
       }
     });
 
+    const startTime = Date.now();
+    const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes timeout
+
     while (!operation.done) {
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        throw new Error("Video generation timed out after 5 minutes.");
+      }
       await new Promise(resolve => setTimeout(resolve, 10000));
       operation = await ai.operations.getVideosOperation({operation: operation});
     }
@@ -199,89 +221,107 @@ export async function generateFullWidgetPreset(prompt: string, vibe: string, ass
 
   try {
     // 1. Generate the JSON Preset
-      const jsonResponse = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: `Generate a complete KWGT preset JSON for a widget based on this prompt: "${prompt}".
-      
-      CRITICAL ARCHITECTURAL INSTRUCTIONS:
-      - Vibe: ${vibe}
-      - Style: If neomorphic, use precise shadow calculations. Neumorphism requires two shadows: 
-        1. A light shadow (e.g., #FFFFFF30) at a negative offset (e.g., -10, -10).
-        2. A dark shadow (e.g., #00000050) at a positive offset (e.g., 10, 10).
-        3. The background color must be the same as the element's color to create the "extruded" look.
-      - Assets to include/map: 
-        - Fonts: ${assets.fonts.join(', ')}
-        - Icons: ${assets.icons.join(', ')}
-        - Bitmaps: ${assets.bitmaps.join(', ')}
-      - The JSON MUST follow this exact structure and property naming convention (e.g., paint_color, fx_shadow_color, internal_events):
-      {
-        "preset_info": {
-          "title": "A sleek dark enhanced 3D",
-          "features": "BATTERY NEUMORPHISM",
-          "release": 351031415,
-          "width": 720,
-          "height": 720
-        },
-        "preset_root": {
-          "internal_type": "RootLayerModule",
-          "config_scale_value": 100,
-          "viewgroup_items": [
-            {
-              "internal_type": "ShapeModule",
-              "shape": "RECT",
-              "width": 720,
-              "height": 300,
-              "paint_color": "#FF1E1E1E",
-              "shape_corners": 40
-            },
-            {
-              "internal_type": "StackLayerModule",
-              "orientation": "HORIZONTAL",
-              "justification": "CENTER",
-              "margin": 20,
-              "viewgroup_items": [
-                {
-                  "internal_type": "OverlapLayerModule",
-                  "internal_events": [
-                    {
-                      "action": "INTENT",
-                      "intent": "com.android.settings/.Settings$BatterySaverSettingsActivity"
-                    }
-                  ],
-                  "viewgroup_items": [
-                    {
-                      "internal_type": "ShapeModule",
-                      "shape": "CIRCLE",
-                      "size": 140,
-                      "paint_color": "#FF252525",
-                      "fx_shadow_color": "#CC000000",
-                      "fx_shadow_blur": 20,
-                      "fx_shadow_distance": 12,
-                      "fx_shadow_direction": 135
-                    },
-                    {
-                      "internal_type": "TextModule",
-                      "position_anchor": "CENTER",
-                      "text_size": 24,
-                      "text_expression": "$bi(level)$%"
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
+      const jsonResponse = await withTimeout(
+        ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: `Generate a complete KWGT preset JSON for a widget based on this prompt: "${prompt}".
+        
+        CRITICAL ARCHITECTURAL INSTRUCTIONS:
+        - Vibe: ${vibe}
+        - Style: If neomorphic, use precise shadow calculations. Neumorphism requires two shadows: 
+          1. A light shadow (e.g., #FFFFFF30) at a negative offset (e.g., -10, -10).
+          2. A dark shadow (e.g., #00000050) at a positive offset (e.g., 10, 10).
+          3. The background color must be the same as the element's color to create the "extruded" look.
+        - Assets to include/map: 
+          - Fonts: ${assets.fonts.join(', ')}
+          - Icons: ${assets.icons.join(', ')}
+          - Bitmaps: ${assets.bitmaps.join(', ')}
+        - The JSON MUST follow this exact structure and property naming convention (e.g., paint_color, fx_shadow_color, internal_events):
+        {
+          "preset_info": {
+            "title": "A sleek dark enhanced 3D",
+            "features": "BATTERY NEUMORPHISM",
+            "release": 351031415,
+            "width": 720,
+            "height": 720
+          },
+          "preset_root": {
+            "internal_type": "RootLayerModule",
+            "config_scale_value": 100,
+            "viewgroup_items": [
+              {
+                "internal_type": "ShapeModule",
+                "shape": "RECT",
+                "width": 720,
+                "height": 300,
+                "paint_color": "#FF1E1E1E",
+                "shape_corners": 40
+              },
+              {
+                "internal_type": "StackLayerModule",
+                "orientation": "HORIZONTAL",
+                "justification": "CENTER",
+                "margin": 20,
+                "viewgroup_items": [
+                  {
+                    "internal_type": "OverlapLayerModule",
+                    "internal_events": [
+                      {
+                        "action": "INTENT",
+                        "intent": "com.android.settings/.Settings$BatterySaverSettingsActivity"
+                      }
+                    ],
+                    "viewgroup_items": [
+                      {
+                        "internal_type": "ShapeModule",
+                        "shape": "CIRCLE",
+                        "size": 140,
+                        "paint_color": "#FF252525",
+                        "fx_shadow_color": "#CC000000",
+                        "fx_shadow_blur": 20,
+                        "fx_shadow_distance": 12,
+                        "fx_shadow_direction": 135
+                      },
+                      {
+                        "internal_type": "TextModule",
+                        "position_anchor": "CENTER",
+                        "text_size": 24,
+                        "text_expression": "$bi(level)$%"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
         }
-      }
-      - Use Overlap Groups to layer shadows and content.
-      - Map the provided asset filenames into the JSON structure where appropriate.
-      - ONLY output valid JSON.
-      - DO NOT include markdown formatting like \`\`\`json or \`\`\`.
-      - DO NOT include any explanatory text.
-      `,
-      });
+        - Use Overlap Groups to layer shadows and content.
+        - Map the provided asset filenames into the JSON structure where appropriate.
+        - ONLY output valid JSON.
+        - DO NOT include markdown formatting like \`\`\`json or \`\`\`.
+        - DO NOT include any explanatory text.
+        `,
+        }),
+        90000,
+        "JSON Preset generation timed out."
+      );
 
     let jsonStr = jsonResponse.text || "";
-    jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+    
+    // Extract JSON block if it's wrapped in markdown
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch && jsonMatch[1]) {
+      jsonStr = jsonMatch[1];
+    } else {
+      // Fallback: try to find the first { and last }
+      const firstBrace = jsonStr.indexOf('{');
+      const lastBrace = jsonStr.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      }
+    }
+    
+    jsonStr = jsonStr.trim();
     
     let jsonPreset;
     try {
@@ -292,14 +332,18 @@ export async function generateFullWidgetPreset(prompt: string, vibe: string, ass
     }
 
     // 2. Generate the Instructions
-    const instructionsResponse = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: `Based on the following KWGT widget preset JSON, provide comprehensive, non-jargon, step-by-step instructions on how to build this widget in the KWGT app.
-      
-      JSON: ${JSON.stringify(jsonPreset)}
-      
-      Instructions:`,
-    });
+    const instructionsResponse = await withTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Based on the following KWGT widget preset JSON, provide comprehensive, non-jargon, step-by-step instructions on how to build this widget in the KWGT app.
+        
+        JSON: ${JSON.stringify(jsonPreset)}
+        
+        Instructions:`,
+      }),
+      60000,
+      "Instructions generation timed out."
+    );
 
     return {
       json: jsonPreset,

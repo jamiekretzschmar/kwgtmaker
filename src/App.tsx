@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { WidgetFeatuator } from './components/WidgetFeatuator';
@@ -12,8 +12,13 @@ import { Layers } from 'lucide-react';
 import { AuthButton } from './components/Auth';
 import { WidgetProvider } from './context/WidgetContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { TaskProvider } from './context/TaskContext';
+import { TaskHub } from './components/TaskHub';
 
 function GeneratorPage({ user, refreshTrigger, setRefreshTrigger }: { user: User | null, refreshTrigger: number, setRefreshTrigger: React.Dispatch<React.SetStateAction<number>> }) {
+  const location = useLocation();
+  const editWidget = location.state?.editWidget;
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div>
@@ -22,7 +27,7 @@ function GeneratorPage({ user, refreshTrigger, setRefreshTrigger }: { user: User
       </div>
       
       {user ? (
-        <WidgetFeatuator onWidgetGenerated={() => setRefreshTrigger(prev => prev + 1)} />
+        <WidgetFeatuator key={location.key} onWidgetGenerated={() => setRefreshTrigger(prev => prev + 1)} editWidget={editWidget} />
       ) : (
         <div className="max-w-4xl mx-auto p-12 bg-neutral-900 rounded-2xl border border-neutral-800 text-center">
           <Layers className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
@@ -83,19 +88,22 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider>
-      <WidgetProvider>
-        <Layout user={user}>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/generator" element={<GeneratorPage user={user} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} />} />
-            <Route path="/history" element={<HistoryPage user={user} refreshTrigger={refreshTrigger} />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/widget/:id" element={<WidgetView />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Layout>
-      </WidgetProvider>
-    </ThemeProvider>
+    <TaskProvider>
+      <ThemeProvider>
+        <WidgetProvider>
+          <Layout user={user}>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/generator" element={<GeneratorPage user={user} refreshTrigger={refreshTrigger} setRefreshTrigger={setRefreshTrigger} />} />
+              <Route path="/history" element={<HistoryPage user={user} refreshTrigger={refreshTrigger} />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/widget/:id" element={<WidgetView />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Layout>
+          <TaskHub />
+        </WidgetProvider>
+      </ThemeProvider>
+    </TaskProvider>
   );
 }

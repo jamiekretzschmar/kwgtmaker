@@ -7,6 +7,7 @@ import Markdown from 'react-markdown';
 import { exportToKwgt } from '../utils/kwgtExport';
 import { compressImage } from '../utils/image';
 import { useWidget } from '../context/WidgetContext';
+import { useTask } from '../context/TaskContext';
 
 const ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '9:16', '16:9', '21:9'];
 
@@ -18,17 +19,29 @@ const DESIGN_STYLES = [
   'Monochrome', 'High Contrast'
 ];
 
-import { ExportFile } from '../types';
+const PREDEFINED_PALETTES = [
+  { name: 'Default Dark', primary: '#1E1E1E', secondary: '#FFFFFF', accent: '#6366F1' },
+  { name: 'Ocean', primary: '#0F172A', secondary: '#F8FAFC', accent: '#38BDF8' },
+  { name: 'Forest', primary: '#14532D', secondary: '#ECFDF5', accent: '#10B981' },
+  { name: 'Sunset', primary: '#450A0A', secondary: '#FEF2F2', accent: '#F97316' },
+  { name: 'Cyberpunk', primary: '#09090B', secondary: '#FAFAFA', accent: '#D946EF' },
+  { name: 'Monochrome', primary: '#000000', secondary: '#FFFFFF', accent: '#737373' },
+];
 
-export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () => void }) {
-  const [prompt, setPrompt] = useState('');
-  const [aspectRatio, setAspectRatio] = useState('1:1');
+import { ExportFile } from '../types';
+import { WidgetData } from '../services/firestore';
+
+export function WidgetFeatuator({ onWidgetGenerated, editWidget }: { onWidgetGenerated: () => void, editWidget?: WidgetData }) {
+  const [prompt, setPrompt] = useState(editWidget?.prompt || '');
+  const [aspectRatio, setAspectRatio] = useState(editWidget?.aspectRatio || '1:1');
   const [vibe, setVibe] = useState('Minimalist');
   const [error, setError] = useState<string | null>(null);
-  const [currentWidgetId, setCurrentWidgetId] = useState<string | null>(null);
+  const [currentWidgetId, setCurrentWidgetId] = useState<string | null>(editWidget?.id || null);
   const [showStyles, setShowStyles] = useState(false);
+  const [showPalettes, setShowPalettes] = useState(false);
 
   const { state, setState } = useWidget();
+  const { addTask, updateTask } = useTask();
   const { result, loading, auditResult, isAuditing, videoUrl, isGeneratingVideo, videoLoadingMessage, videoError, fonts, icons, bitmaps, fileErrors } = state;
 
   const setResult = (result: any) => setState(prev => ({ ...prev, result }));
@@ -45,12 +58,32 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
   const setFileErrors = (fileErrors: any | ((prev: any) => any)) => setState(prev => ({ ...prev, fileErrors: typeof fileErrors === 'function' ? fileErrors(prev.fileErrors) : fileErrors }));
   const setFavoriteColors = (favoriteColors: string[]) => setState(prev => ({ ...prev, favoriteColors }));
 
+  useEffect(() => {
+    setLoading(false);
+    if (editWidget) {
+      setPrompt(editWidget.prompt);
+      setAspectRatio(editWidget.aspectRatio);
+      setCurrentWidgetId(editWidget.id || null);
+      if (editWidget.presetJson || editWidget.mockupUrl || editWidget.instructions) {
+        setResult({
+          mockupUrl: editWidget.mockupUrl,
+          instructions: editWidget.instructions,
+          presetJson: editWidget.presetJson
+        });
+      }
+    }
+  }, [editWidget]);
+
   const addFavoriteColor = async (color: string) => {
     if (!state.favoriteColors.includes(color)) {
       const newColors = [...state.favoriteColors, color];
       setFavoriteColors(newColors);
       if (auth.currentUser) {
-        await saveFavoriteColors(auth.currentUser.uid, newColors);
+        try {
+          await saveFavoriteColors(auth.currentUser.uid, newColors);
+        } catch (err) {
+          console.error('Failed to save favorite colors:', err);
+        }
       }
     }
   };
@@ -59,7 +92,11 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
     const newColors = state.favoriteColors.filter(c => c !== color);
     setFavoriteColors(newColors);
     if (auth.currentUser) {
-      await saveFavoriteColors(auth.currentUser.uid, newColors);
+      try {
+        await saveFavoriteColors(auth.currentUser.uid, newColors);
+      } catch (err) {
+        console.error('Failed to save favorite colors:', err);
+      }
     }
   };
 
@@ -69,8 +106,12 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
   useEffect(() => {
     const loadColors = async () => {
       if (auth.currentUser) {
-        const colors = await loadFavoriteColors(auth.currentUser.uid);
-        setFavoriteColors(colors);
+        try {
+          const colors = await loadFavoriteColors(auth.currentUser.uid);
+          setFavoriteColors(colors);
+        } catch (err) {
+          console.error('Failed to load favorite colors:', err);
+        }
       }
     };
     loadColors();
@@ -153,6 +194,12 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
     setVideoError(null);
     setVideoLoadingMessage('Initializing animation generation...');
 
+    const taskId = addTask({
+      name: 'Generating Animation',
+      status: 'processing',
+      progress: 0,
+    });
+
     // Simulate progress messages since video generation takes a while
     const messages = [
       'Analyzing widget design...',
@@ -166,14 +213,18 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
     const messageInterval = setInterval(() => {
       messageIndex = (messageIndex + 1) % messages.length;
       setVideoLoadingMessage(messages[messageIndex]);
+      updateTask(taskId, { progress: Math.min(90, (messageIndex + 1) * 15), name: messages[messageIndex] });
     }, 15000);
 
     try {
+      updateTask(taskId, { progress: 10, name: 'Initializing animation generation...' });
       const url = await generateWidgetAnimation(prompt, result.mockupUrl, aspectRatio);
       setVideoUrl(url);
+      updateTask(taskId, { progress: 100, status: 'completed', name: 'Animation generated successfully' });
     } catch (err) {
       console.error('Video generation failed:', err);
       setVideoError(err instanceof Error ? err.message : 'Failed to generate animation.');
+      updateTask(taskId, { status: 'failed', error: err instanceof Error ? err.message : 'Failed to generate animation.' });
     } finally {
       clearInterval(messageInterval);
       setIsGeneratingVideo(false);
@@ -193,9 +244,16 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
 
     const fullPrompt = `${currentPrompt}\n\nColor Palette:\nPrimary: ${primaryColor}\nSecondary: ${secondaryColor}\nAccent: ${accentColor}`;
 
+    const taskId = addTask({
+      name: 'Generating Widget',
+      status: 'processing',
+      progress: 0,
+    });
+
     try {
       // 1. Generate the full preset and instructions
       console.log('DEBUG: fonts:', fonts, 'icons:', icons, 'bitmaps:', bitmaps);
+      updateTask(taskId, { progress: 20, name: 'Drafting layout...' });
       const { json: presetJson, instructions } = await generateFullWidgetPreset(fullPrompt, vibe, {
         fonts: (Array.isArray(fonts) ? fonts : []).map(f => f.name),
         icons: (Array.isArray(icons) ? icons : []).map(i => i.name),
@@ -203,14 +261,23 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
       });
 
       // 2. Generate the mockup image separately
-      const mockupUrl = await generateWidgetMockup(fullPrompt, aspectRatio);
-      const compressedMockupUrl = await compressImage(mockupUrl, 800, 0.7);
+      let compressedMockupUrl = '';
+      try {
+        updateTask(taskId, { progress: 60, name: 'Generating mockup...' });
+        const mockupUrl = await generateWidgetMockup(fullPrompt, aspectRatio);
+        compressedMockupUrl = await compressImage(mockupUrl, 800, 0.7);
+      } catch (mockupErr) {
+        console.error('Mockup generation failed:', mockupErr);
+        // Fallback to a placeholder or empty string if mockup fails
+        compressedMockupUrl = `https://picsum.photos/seed/${encodeURIComponent(prompt)}/800/800?blur=4`;
+      }
 
       setResult({ mockupUrl: compressedMockupUrl, instructions, presetJson });
 
       // 3. Audit Contrast
       setIsAuditing(true);
       try {
+        updateTask(taskId, { progress: 80, name: 'Auditing contrast...' });
         const audit = await auditWidgetContrast(presetJson);
         setAuditResult(audit);
       } catch (err) {
@@ -220,6 +287,7 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
       }
 
       // Save to Firestore
+      updateTask(taskId, { progress: 90, name: 'Saving widget...' });
       if (currentWidgetId) {
         await updateWidget(currentWidgetId, {
           prompt,
@@ -242,24 +310,40 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
         }
       }
 
+      updateTask(taskId, { progress: 100, status: 'completed', name: 'Widget generated successfully' });
       onWidgetGenerated();
     } catch (err) {
       console.error('Generation failed:', err);
       setError(err instanceof Error ? err.message : 'An error occurred during generation. Please try again or check your API key quota.');
+      updateTask(taskId, { status: 'failed', error: err instanceof Error ? err.message : 'An unexpected error occurred' });
     } finally {
       setLoading(false);
     }
   };
 
+  const [wizardError, setWizardError] = useState<string | null>(null);
+
   const handleWizardSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt) return;
     setWizardLoading(true);
+    setWizardError(null);
+
+    const taskId = addTask({
+      name: 'Generating Suggestions',
+      status: 'processing',
+      progress: 0,
+    });
+
     try {
+      updateTask(taskId, { progress: 50, name: 'Analyzing prompt...' });
       const suggestions = await suggestWidgetImprovements(prompt, wizardInput);
       setWizardResult(suggestions);
+      updateTask(taskId, { progress: 100, status: 'completed', name: 'Suggestions generated' });
     } catch (err) {
       console.error(err);
+      setWizardError(err instanceof Error ? err.message : 'Failed to get suggestions.');
+      updateTask(taskId, { status: 'failed', error: err instanceof Error ? err.message : 'Failed to get suggestions.' });
     } finally {
       setWizardLoading(false);
     }
@@ -402,9 +486,44 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-2">
-              Color Palette
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-medium text-neutral-300">
+                Color Palette
+              </label>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowPalettes(!showPalettes)}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                >
+                  <Palette className="w-3 h-3" /> Predefined <ChevronDown className="w-3 h-3" />
+                </button>
+                {showPalettes && (
+                  <div className="absolute right-0 top-full mt-1 w-48 max-h-64 overflow-y-auto bg-neutral-800 border border-neutral-700 rounded-xl shadow-xl z-10 custom-scrollbar">
+                    {PREDEFINED_PALETTES.map((p, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => {
+                          setPrimaryColor(p.primary);
+                          setSecondaryColor(p.secondary);
+                          setAccentColor(p.accent);
+                          setShowPalettes(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-700 hover:text-white border-b border-neutral-700/50 last:border-0 transition-colors flex items-center gap-2"
+                      >
+                        <div className="flex gap-0.5 shrink-0">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.primary }} />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.secondary }} />
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: p.accent }} />
+                        </div>
+                        <span className="truncate">{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="flex items-center gap-4 bg-neutral-800 p-3 rounded-xl border border-neutral-700">
               <div className="flex flex-col items-center gap-1">
                 <input
@@ -437,6 +556,7 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
                 <span className="text-[10px] text-neutral-400">Accent</span>
               </div>
               <button
+                type="button"
                 onClick={() => addFavoriteColor(accentColor)}
                 className="w-8 h-8 rounded-full border border-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white bg-neutral-900"
                 title="Save Accent Color"
@@ -449,11 +569,13 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
                 {state.favoriteColors.map(color => (
                   <div key={color} className="relative group">
                     <button
+                      type="button"
                       onClick={() => setAccentColor(color)}
                       className="w-6 h-6 rounded-full border border-neutral-700"
                       style={{ backgroundColor: color }}
                     />
                     <button
+                      type="button"
                       onClick={() => removeFavoriteColor(color)}
                       className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-3 h-3 text-[8px] flex items-center justify-center opacity-0 group-hover:opacity-100"
                     >
@@ -708,6 +830,13 @@ export function WidgetFeatuator({ onWidgetGenerated }: { onWidgetGenerated: () =
                 Get Suggestions
               </button>
             </form>
+            
+            {wizardError && (
+              <div className="p-4 bg-red-900/30 border border-red-500/50 rounded-xl flex items-start gap-3 text-red-200 mt-4">
+                <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <p className="text-sm">{wizardError}</p>
+              </div>
+            )}
             
             {wizardResult && wizardResult.length > 0 && (
               <div className="bg-neutral-800/50 rounded-2xl p-6 border border-indigo-500/30 mt-4 animate-in fade-in slide-in-from-top-2">

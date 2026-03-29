@@ -212,12 +212,36 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
 
     // Get the binary blob from the response
     const blob = await response.blob();
+    const fileName = `${dynamicTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${widget.id || 'export'}.kwgt`;
     
-    // Trigger the download
+    // Try File System Access API first
+    try {
+      if ('showSaveFilePicker' in window) {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: fileName,
+          types: [{
+            description: 'KWGT Widget',
+            accept: { 'application/octet-stream': ['.kwgt'] },
+          }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return; // Success, exit early
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.warn('File System Access API failed, falling back to download', err);
+      } else {
+        return; // User cancelled
+      }
+    }
+
+    // Fallback to standard download
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${dynamicTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${widget.id || 'export'}.kwgt`;
+    a.download = fileName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

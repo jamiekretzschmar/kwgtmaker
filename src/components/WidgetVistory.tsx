@@ -3,7 +3,7 @@ import { loadWidgets, deleteWidget, WidgetData } from '../services/firestore';
 import { auth } from '../firebase';
 import { Trash2, Clock, Calendar, Share2, Check, X, AlertCircle, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { format } from 'date-fns';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { exportToKwgt } from '../utils/kwgtExport';
 import { ExportFile } from '../types';
 
@@ -22,6 +22,7 @@ export function WidgetVistory({ refreshTrigger, user }: { refreshTrigger: number
   const [widgets, setWidgets] = useState<WidgetData[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [selectedWidget, setSelectedWidget] = useState<WidgetData | null>(null);
@@ -185,6 +186,19 @@ export function WidgetVistory({ refreshTrigger, user }: { refreshTrigger: number
                 referrerPolicy="no-referrer"
               />
               <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    navigate('/generator', { state: { editWidget: widget } });
+                  }}
+                  className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-transform transform scale-90 group-hover:scale-100"
+                  title="Edit Widget"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </button>
                 <button
                   onClick={(e) => handleShare(widget.id!, e)}
                   className="p-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full transition-transform transform scale-90 group-hover:scale-100"
