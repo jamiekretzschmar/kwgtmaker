@@ -108,14 +108,14 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
     }
 
     // Generate a dynamic title from the prompt (first 3 words) or use provided title
-    const dynamicTitle = options?.title || widget.prompt.split(' ').slice(0, 3).join(' ') || 'KustomGen Widget';
+    const dynamicTitle = options?.title || widget.prompt.split(' ').slice(0, 3).join(' ') || 'kwgtmaker Widget';
 
     let presetJson: any = {
       "preset_info": {
         "version": options?.version ?? 11,
         "title": dynamicTitle,
         "description": widget.prompt,
-        "author": "KustomGen",
+        "author": "kwgtmaker",
         "width": 720,
         "height": 720,
         "features": features.trim(),
@@ -153,7 +153,7 @@ export async function exportToKwgt(widget: WidgetData, options?: KwgtExportOptio
       // Merge in any missing required fields
       presetJson.preset_info.title = presetJson.preset_info.title || dynamicTitle;
       presetJson.preset_info.description = presetJson.preset_info.description || widget.prompt;
-      presetJson.preset_info.author = presetJson.preset_info.author || "KustomGen";
+      presetJson.preset_info.author = presetJson.preset_info.author || "kwgtmaker";
       presetJson.preset_info.width = presetJson.preset_info.width || 720;
       presetJson.preset_info.height = presetJson.preset_info.height || 720;
       presetJson.preset_info.release = presetJson.preset_info.release || (options?.release ?? 351031415);

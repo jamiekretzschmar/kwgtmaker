@@ -93,7 +93,7 @@ export function WidgetVistory({ refreshTrigger, user }: { refreshTrigger: number
     setFileErrors({});
     
     // Reset advanced options
-    setExportTitle(widget.prompt.split(' ').slice(0, 3).join(' ') || 'KustomGen Widget');
+    setExportTitle(widget.prompt.split(' ').slice(0, 3).join(' ') || 'kwgtmaker Widget');
     setExportVersion(11);
     setExportRelease(351031415);
     setExportPflags(0);

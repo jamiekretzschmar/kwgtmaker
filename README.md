@@ -1,6 +1,6 @@
-# KustomGen
+# kwgtmaker
 
-KustomGen is an AI-powered tool that helps you design and build KWGT (Kustom Widget Maker) widgets for Android.
+kwgtmaker is an AI-powered tool that helps you design and build KWGT (Kustom Widget Maker) widgets for Android.
 
 ## Features
 
@@ -17,7 +17,7 @@ To run this project on your local machine, you'll need Node.js and npm installed
 1. Clone the repository:
    ```bash
    git clone <repository-url>
-   cd kustomgen
+   cd kwgtmaker
    ```
 
 2. Install dependencies:
@@ -31,7 +31,7 @@ To run this project on your local machine, you'll need Node.js and npm installed
    VITE_GEMINI_API_KEY=your_api_key_here
    ```
 
-4. Start the development server:
+4. Start the development server (runs on localhost:3000):
    ```bash
    npm run dev
    ```

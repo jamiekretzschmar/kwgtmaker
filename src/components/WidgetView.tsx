@@ -64,7 +64,7 @@ export function WidgetView() {
             <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
               <Layers className="w-6 h-6 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-white tracking-tight">KustomGen</h1>
+            <h1 className="text-xl font-bold text-white tracking-tight">kwgtmaker</h1>
           </Link>
           <Link to="/" className="text-sm font-medium text-neutral-400 hover:text-white flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> Home

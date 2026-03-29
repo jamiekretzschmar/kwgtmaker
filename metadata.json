@@ -1,5 +1,5 @@
 {
-  "name": "KustomGen",
+  "name": "kwgtmaker",
   "description": "Generate KWGT widgets from text prompts with mockups, instructions, and Kodes.",
   "requestFramePermissions": []
 }
